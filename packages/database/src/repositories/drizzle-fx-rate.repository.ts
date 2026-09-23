@@ -24,6 +24,15 @@ export const toDomainFxRate = (record: FxRateRecord): FxRate => {
   return result.value;
 };
 
+export const toDatabaseFxRate = (rate: FxRate, id?: string): Omit<FxRateRecord, 'createdAt'> => ({
+  id: id ?? `fx_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
+  baseCurrency: rate.baseCurrency,
+  quoteCurrency: rate.quoteCurrency,
+  rate: rate.rate.toString(),
+  observedAt: rate.observedAt,
+  source: rate.source,
+});
+
 export class DrizzleFxRateRepository implements FxRateRepositoryPort {
   constructor(private readonly db: PgDatabase<any>) {}
 

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS "fx_rates" (
   "id" VARCHAR(64) PRIMARY KEY,
   "base_currency" VARCHAR(8) NOT NULL,
   "quote_currency" VARCHAR(8) NOT NULL,
-  "rate" NUMERIC(24, 8) NOT NULL,
+  "rate" NUMERIC(32, 16) NOT NULL,
   "observed_at" TIMESTAMP WITH TIME ZONE NOT NULL,
   "source" VARCHAR(64) NOT NULL,
   "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

@@ -17,11 +17,11 @@ describe('Financial Semantics Database Migration (0004_financial_precision_curre
     expect(sql).toContain('"quote_currency" VARCHAR(8) NOT NULL');
   });
 
-  it('verifies numeric precision and idempotency constraints in DDL', () => {
+  it('verifies NUMERIC(32, 16) precision and idempotency constraints in DDL', () => {
     const sql = fs.readFileSync(migrationPath, 'utf-8');
 
-    // Decimal precision: NUMERIC(24, 8)
-    expect(sql).toContain('NUMERIC(24, 8)');
+    // High decimal precision: NUMERIC(32, 16) to prevent micro-currency inverse precision loss
+    expect(sql).toContain('NUMERIC(32, 16)');
 
     // Idempotency index
     expect(sql).toContain('fx_rates_idempotency_idx');

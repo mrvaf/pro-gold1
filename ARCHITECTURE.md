@@ -112,10 +112,42 @@ It is completely decoupled from the Stage 5 Pricing Engine, which later answers:
 ### 5.1 Three-Tier Precision Architecture
 V-GOLD explicitly separates precision concerns into three non-interchangeable tiers:
 1. **Calculation Precision:** Internal computations execute in arbitrary precision via `Decimal.js` (default: 28+ significant digits). Intermediate operations must **never be prematurely rounded**.
-2. **Storage Precision:** Database persistence in PostgreSQL uses `NUMERIC(24, 8)` to ensure zero truncation across all currencies and micro-weights.
+2. **Storage Precision:** Database persistence in PostgreSQL uses explicit scale boundaries per data type:
+   - `NUMERIC(32, 16)` for FX rates (accommodates micro-currency inverse rates like `IRR/USD`).
+   - `NUMERIC(24, 8)` for market spot prices and unit rates.
+   - `NUMERIC(24, 4)` for monetary amounts and transaction balances.
+   Values exceeding the target column scale must never be silently truncated; explicit scale validation (`FinancialRoundingPolicy.assertStorageScale()`) or rounding (`prepareForStorage()`) is enforced before persistence.
 3. **Presentation Precision:** Final rounding occurs solely at the presentation boundary, formatted according to currency minor units (e.g. 2 decimal places for USD/EUR, 0 decimal places for IRR/TOMAN) using deterministic rounding modes.
 
-### 5.2 Currency Semantics & The Toman/Rial Relationship
+### 5.2 Precision Matrix
+| Data Type | Domain Precision | Storage Precision | Presentation Precision | Rounding Boundary | Lossless? |
+|---|---|---|---|---|---|
+| **Monetary Amount (`Money`)** | Arbitrary (`Decimal.js`) | `NUMERIC(24, 4)` | Currency Minor Units (USD/EUR: 2, IRR/TOMAN: 0) | Presentation / Storage Boundary | Yes (within 4 decimal places) |
+| **Market Spot Rate (`MarketPrice`)** | Arbitrary (`Decimal.js`) | `NUMERIC(24, 8)` | 2–4 decimals depending on quote unit | Ingestion & Display Boundary | Yes (within 8 decimal places) |
+| **FX Conversion Rate (`FxRate`)** | Arbitrary (`Decimal.js`) | `NUMERIC(32, 16)` | 4–8 decimals | Persistence Boundary | Yes (within 16 decimal places; micro-currencies preserved) |
+| **Precious Metal Weight (`Weight`)** | Arbitrary (`Decimal.js`) | `NUMERIC(16, 6)` | 3–4 decimals (grams) / 2 decimals (troy oz) | Physical Scale / Order Boundary | Yes (within 1 microgram) |
+| **Gold Purity (`GoldPurity`)** | Arbitrary (`Decimal.js`) | `NUMERIC(6, 4)` | 3–4 decimals (millesimal) / 0–1 decimals (karat) | Catalog Specification Boundary | Yes (within 0.0001 fineness) |
+
+### 5.3 Rounding Matrix & Detailed Semantics
+All financial rounding is executed through `FinancialRoundingPolicy` wrapping exact `Decimal.js` rounding modes. Terminology is audited to eliminate conflation between directionality and ceiling/floor:
+
+| Mode Key | Decimal.js Constant | Mathematical Definition | Positive Midpoint (+1.25 to 1 dec) | Negative Midpoint (-1.25 to 1 dec) | Typical Use Case in V-GOLD |
+|---|---|---|---|---|---|
+| `HALF_UP` | `ROUND_HALF_UP` (4) | Nearest neighbor; exact midpoints (.5) round away from zero | `+1.3` | `-1.3` | Commercial pricing, consumer quotes, invoices |
+| `HALF_EVEN` | `ROUND_HALF_EVEN` (6) | Banker's rounding; exact midpoints round to nearest even digit | `+1.2` (`+1.35` -> `+1.4`) | `-1.2` (`-1.35` -> `-1.4`) | General ledger accounting, statistical aggregations |
+| `UP` | `ROUND_UP` (0) | Away from zero (positive increases, negative decreases) | `+1.3` (`+1.21` -> `+1.3`) | `-1.3` (`-1.21` -> `-1.3`) | Conservative fee estimation, buyer-facing tax rounding |
+| `DOWN` | `ROUND_DOWN` (1) | Towards zero (truncation) | `+1.2` (`+1.29` -> `+1.2`) | `-1.2` (`-1.29` -> `-1.2`) | Conservative buyer loyalty point earning, payout truncation |
+| `CEIL` | `ROUND_CEIL` (2) | Towards $+\infty$ (true mathematical ceiling) | `+1.3` | `-1.2` (`-1.21` -> `-1.2`) | Physical packaging unit allocation |
+| `FLOOR` | `ROUND_FLOOR` (3) | Towards $-\infty$ (true mathematical floor) | `+1.2` | `-1.3` (`-1.29` -> `-1.3`) | Minimum guaranteed yield calculations |
+
+### 5.4 Mathematical Invariants & Precision Boundaries
+* **Addition / Subtraction:** Associativity $(A + B) + C = A + (B + C)$ and Commutativity $A + B = B + A$ are exact mathematical identities in unrounded `Decimal.js` arithmetic. Zero binary floating-point drift over $50,000+$ cumulative iterations.
+* **Toman / Rial Conversion:** The $10:1$ ratio is an exact integer ratio ($1 \text{ TOMAN} = 10 \text{ IRR}$). Conversions between integer Rials and Tomans are mathematically lossless and drift-free.
+* **Division & FX Round-Trip Boundaries:** In base-10 decimal arithmetic, fractions with non-terminating expansions (e.g. $1/3$, $1/7$, or reciprocal FX rates like $1 / 0.9 = 1.1111...$) cannot be represented in finite decimals. In V-GOLD, division and FX round-trips ($M \to A \to B \to A \to M$) are finite-precision approximations bounded by calculation precision:
+  $$|\Delta_{\text{round-trip}}| \le 10^{-18}$$
+  V-GOLD does **not** claim infinite precision for repeating decimals; numerical stability and error bounds are explicitly documented, tested, and guarded.
+
+### 5.5 Currency Semantics & The Toman/Rial Relationship
 * **Statutory Currency (`IRR`):** Official legal and banking currency of Iran. 0 standard minor units.
 * **Commercial Currency (`TOMAN`):** Commercial unit of account widely used in jewelry bazaars. 0 standard minor units.
 * **Deterministic Conversion Ratio:**
@@ -123,7 +155,7 @@ V-GOLD explicitly separates precision concerns into three non-interchangeable ti
   Codified in `IRR_PER_TOMAN = new Decimal(10)` and `TOMAN_PER_IRR = new Decimal(0.1)`. Conversions are executed via dedicated domain primitives `CurrencyConverter.tomanToIrr()` and `CurrencyConverter.irrToToman()`.
 * **International Currencies (`USD`, `EUR`):** Fiat reference currencies with 2 standard minor units (cents).
 
-### 5.3 Directional Foreign Exchange (FX) Rates
+### 5.6 Directional Foreign Exchange (FX) Rates
 * **`FxRate`:** Directional value object representing:
   $$1 \text{ baseCurrency} = \text{rate} \times \text{quoteCurrency}$$
   Enforces `rate > 0` and `baseCurrency !== quoteCurrency`.
@@ -132,7 +164,7 @@ V-GOLD explicitly separates precision concerns into three non-interchangeable ti
   Calculated with high Decimal precision without IEEE-754 binary floating-point pollution.
 * **`CurrencyConverter`:** Converts `Money` amounts across currencies via `Money(base) * FxRate(base -> quote) = Money(quote)`. Verifies base currency parity and preserves raw intermediate decimals.
 
-### 5.4 Distinction between `MarketPrice` and `Money`
+### 5.7 Distinction between `MarketPrice` and `Money`
 * **`MarketPrice`:** Represents an *external commodity quote per unit of mass* (e.g. $2650.50 \text{ USD} / \text{troy ounce}$ or $54,000,000 \text{ IRR} / \text{gram}$). It encapsulates a trading unit (`MarketUnitCode`).
 * **`Money`:** Represents a *discrete monetary value or transaction balance* ($\text{amount} + \text{currency}$). It does not represent a unit price or physical mass.
 
@@ -161,12 +193,12 @@ V-GOLD explicitly separates precision concerns into three non-interchangeable ti
 * **ADR-0019:** Arbitrary Decimal Precision and Unit Semantics for Precious Metals (Stage 4)
 
 ### ADR-0020: Three-Tier Financial Precision Architecture and Explicit Rounding Policy
-* **Status:** Accepted (Stage 4.1)
-* **Context:** Financial applications in gold and jewelry suffer from rounding errors when intermediate formulas round prematurely. Furthermore, different jurisdictions and currencies require different scale rules (e.g. cents in USD vs whole units in Tomans).
+* **Status:** Accepted (Stage 4.1, Audited & Hardened)
+* **Context:** Financial applications in gold and jewelry suffer from precision collapse when intermediate formulas round prematurely, or when micro-currency inverse rates (e.g. IRR/USD $= 1 / 600,000$) truncate trailing digits. Furthermore, different jurisdictions and currencies require different scale rules (e.g. cents in USD vs whole units in Tomans).
 * **Decision:** Establish a strict Three-Tier Precision Architecture:
   1. *Calculation Precision:* Raw Decimal.js arithmetic with no rounding during intermediate computation chains.
-  2. *Storage Precision:* PostgreSQL `NUMERIC(24, 8)` to store authoritative values up to 8 decimal places.
-  3. *Presentation Precision:* Explicit rounding solely at the final boundary using `ROUND_HALF_UP` (or `ROUND_HALF_EVEN` where banking rules apply).
+  2. *Storage Precision:* PostgreSQL `NUMERIC(32, 16)` for FX rates, `NUMERIC(24, 8)` for market spot prices, and `NUMERIC(24, 4)` for monetary amounts. Explicit assertion (`FinancialRoundingPolicy.assertStorageScale()`) prohibits silent truncation before persistence.
+  3. *Presentation Precision:* Explicit rounding solely at the final boundary using audited modes (`ROUND_HALF_UP`, `ROUND_HALF_EVEN`, `ROUND_UP`, `ROUND_DOWN`). Terminology strictly distinguishes away-from-zero/towards-zero from ceiling/floor.
 
 ### ADR-0021: Directional Foreign Exchange (FX) Rate Modeling and Deterministic Inversion
 * **Status:** Accepted (Stage 4.1)

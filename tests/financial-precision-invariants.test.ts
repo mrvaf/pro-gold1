@@ -44,16 +44,48 @@ describe('Financial Precision Invariants & Mathematical Properties', () => {
     expect(accumulated.amount.equals(new Decimal(5000))).toBe(true);
   });
 
-  it('preserves exact fractional cents over extreme division and multiplication chains', () => {
-    // 100 / 3 * 3 === 100 in high-precision decimal arithmetic
+  it('bounds division and multiplication round-trip error within Decimal calculation precision epsilon', () => {
+    // 100 / 3 * 3 has a repeating decimal in base 10 (33.333333333333333333...)
+    // Decimal.js default precision is 20 digits, so 33.333333333333333333 * 3 = 99.999999999999999999
+    // The error is strictly bounded by machine epsilon eps <= 10^-18, not an exact identity for repeating decimals
     const original = Money.create('100.00', 'EUR').unwrap();
     const third = original.divide('3').unwrap();
     const reconstructed = third.multiply('3').unwrap();
 
-    // Decimal.js default precision is 20 digits, so 33.333333333333333333 * 3 = 99.999999999999999999
-    // Difference is exactly 10^-18
     const diff = original.amount.minus(reconstructed.amount).abs();
     expect(diff.lessThanOrEqualTo(new Decimal('1e-18'))).toBe(true);
+  });
+
+  it('demonstrates FX round-trip behavior: exact for terminating ratios, bounded for repeating decimals', () => {
+    // Terminating ratio: USD/EUR = 0.8
+    const mUsd = Money.create('100', 'USD').unwrap();
+    const usdToEur = FxRate.create({
+      baseCurrency: 'USD',
+      quoteCurrency: 'EUR',
+      rate: '0.8',
+      source: 'TEST',
+    }).unwrap();
+    const eurToUsd = usdToEur.invert(); // 1 / 0.8 = 1.25 (exact terminating decimal)
+
+    const convertedEur = CurrencyConverter.convert(mUsd, usdToEur).unwrap();
+    const backToUsd = CurrencyConverter.convert(convertedEur, eurToUsd).unwrap();
+    expect(backToUsd.amount.toString()).toBe('100');
+
+    // Repeating ratio: USD/EUR = 0.9 (invert is 1 / 0.9 = 1.1111111111111111111...)
+    const rateRepeating = FxRate.create({
+      baseCurrency: 'USD',
+      quoteCurrency: 'EUR',
+      rate: '0.9',
+      source: 'TEST',
+    }).unwrap();
+    const invRepeating = rateRepeating.invert();
+
+    const convertedRep = CurrencyConverter.convert(mUsd, rateRepeating).unwrap();
+    const roundTripRep = CurrencyConverter.convert(convertedRep, invRepeating).unwrap();
+
+    // Round trip error bounded by Decimal calculation precision
+    const errDelta = roundTripRep.amount.minus(mUsd.amount).abs();
+    expect(errDelta.lessThanOrEqualTo(new Decimal('1e-18'))).toBe(true);
   });
 
   it('handles Iranian sovereign numbers (trillions of Rials) without overflow or scientific notation pollution', () => {
