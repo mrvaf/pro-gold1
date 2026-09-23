@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.4.0-alpha`
-* **Current Stage:** **Stage 4 — Market Data Infrastructure**
+* **Project Version:** `0.4.1-alpha`
+* **Current Stage:** **Stage 4.1 — Financial Precision & Currency Semantics**
 * **Stage Status:** **COMPLETE**
 * **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_04_COMPLETE`
-* **Next Target Stage:** **Stage 4.1 (Financial Precision & Currency Semantics) or Stage 5 (Authoritative Pricing Engine)**
+* **Last Verified Snapshot:** `V-GOLD_STAGE_04_1_COMPLETE`
+* **Next Target Stage:** **Stage 5 — Authoritative Pricing Engine**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -22,9 +22,9 @@
 | **1** | **Architecture & Monorepo Foundation** | **COMPLETE** | 16 passed / 0 skipped / 0 failed | PASS | PASS | Workspaces, boundary AST tests, Next.js web |
 | **2** | **Domain Models & Database Foundations** | **COMPLETE** | 56 passed / 0 skipped / 0 failed | PASS | PASS | Money, GoldPurity, Weight, Tenant, Store, Drizzle ORM, 0001 migration |
 | **3** | **IAM & Multi-Tenancy** | **COMPLETE** | 90 passed / 0 skipped / 0 failed | PASS | PASS | User, Email, PasswordHash, TenantMembership, Session, Scrypt, HttpOnly cookies, 0002 migration |
-| **4** | **Market Data Infrastructure** | **COMPLETE** | **140 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Sources, Instruments, Price, Observations, Freshness policy, Ingestion, Query, Drizzle schema, 0003 migration |
-| 4.1| Financial Precision & Currency Semantics | PENDING | — | — | — | Awaiting user command |
-| 5 | Authoritative Pricing Engine | PENDING | — | — | — | |
+| **4** | **Market Data Infrastructure** | **COMPLETE** | 140 passed / 0 skipped / 0 failed | PASS | PASS | Sources, Instruments, Price, Observations, Freshness policy, Ingestion, Query, Drizzle schema, 0003 migration |
+| **4.1**| **Financial Precision & Currency Semantics** | **COMPLETE** | **175 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Three-tier precision, RoundingPolicy, FxRate, CurrencyConverter, Toman/Rial 1:10 ratio, 0004 migration |
+| 5 | Authoritative Pricing Engine | PENDING | — | — | — | Awaiting user command |
 | 6 | Catalog & Inventory Foundations | PENDING | — | — | — | |
 | 7 | Seller Marketplace | PENDING | — | — | — | |
 | 8 | Seller OS | PENDING | — | — | — | |
@@ -49,99 +49,76 @@
 
 ---
 
-## Stage 4 Completion Gate Audit
+## Stage 4.1 Completion Gate Audit
 
 | Gate Item | Target Standard | Measured Result | Status |
 | :--- | :--- | :--- | :---: |
-| **Domain Foundation** | `MarketDataSource`, `MarketInstrument`, `MarketPrice`, `MarketObservation`, `MarketDataFreshnessPolicy` | Implemented in `@v-gold/core` | **PASS** |
-| **Decimal Precision** | Authoritative market values use Decimal.js (no `parseFloat`, no floating-point math) | Tested in `tests/market-data-decimal.test.ts` | **PASS** |
-| **Source & Timestamps** | Preserves source identity, `observedAt`, and distinct `ingestedAt`; rejects future dates | Tested in `tests/market-observation.test.ts` | **PASS** |
-| **Freshness Classification** | Centralized evaluation: `FRESH` vs `STALE` vs `UNAVAILABLE` without UI hardcoding | Tested in `tests/market-data-freshness.test.ts` | **PASS** |
-| **Provider Abstraction** | Neutral `MarketDataProviderPort` with explicit capability model | Tested in `tests/market-data-provider.test.ts` | **PASS** |
-| **Truthful Fallback** | `UnavailableMarketDataProvider` returns explicit `PROVIDER_UNAVAILABLE` (no fabricated data) | Tested in `tests/market-data-provider.test.ts` | **PASS** |
-| **Test Adapter** | `MockMarketDataProvider` explicitly flagged for automated tests only | Tested in `tests/market-data-provider.test.ts` | **PASS** |
-| **Ingestion & Idempotency** | Prevents duplicate ingestion by `(sourceId, instrumentId, observedAt)` | Tested in `tests/market-data-ingestion.service.test.ts` | **PASS** |
-| **History Immutability** | Append-only historical observation storage; historical rows never overwritten | Tested in `tests/market-data-ingestion.service.test.ts` | **PASS** |
-| **Database Schema** | Drizzle schemas for `market_data_sources`, `market_instruments`, `market_observations` (NUMERIC 24, 8) | Tested in `tests/database-schema-market-data.test.ts` | **PASS** |
-| **DDL Migration** | Sequentially numbered `0003_market_data_foundation.sql` (idempotent, reviewable DDL) | Tested in `tests/database-migration-market-data.test.ts` | **PASS** |
-| **API Endpoints** | `/api/v1/market-data/instruments`, `/api/v1/market-data/latest`, `/latest/:instrument` | Implemented and verified in `apps/web` | **PASS** |
-| **Boundary Isolation** | `@v-gold/core` has ZERO provider SDKs, HTTP client libraries, or DB imports | Verified by AST scan in `tests/architecture.test.ts` | **PASS** |
-| **Test Suite** | Vitest monorepo suite executes reliably | **140 passed / 0 skipped / 0 failed** (31 test files) | **PASS** |
+| **Financial Precision** | Decimal.js for authoritative values (zero `number`, `parseFloat()`, or float math) | Tested in `tests/financial-precision-invariants.test.ts` | **PASS** |
+| **Three-Tier Precision** | Calculation (raw) vs Storage (`NUMERIC(24, 8)`) vs Presentation (currency scale) | Tested in `tests/financial-rounding-policy.test.ts` | **PASS** |
+| **Rounding Policy** | Explicit rounding modes (`ROUND_HALF_UP`, `ROUND_HALF_EVEN`, `ROUND_UP`, `ROUND_DOWN`); zero premature rounding | Tested in `tests/financial-rounding-policy.test.ts` | **PASS** |
+| **Currency Semantics** | `IRR`, `TOMAN`, `USD`, `EUR` with minor units, accounting status, and fiat metadata | Tested in `tests/currency-semantics.test.ts` | **PASS** |
+| **Toman/Rial Relationship** | Exact deterministic 1:10 ratio (`IRR_PER_TOMAN = 10`, `TOMAN_PER_IRR = 0.1`) | Tested in `tests/currency-semantics.test.ts` | **PASS** |
+| **FX Rate Semantics** | Explicit direction ($1 \text{ base} = \text{rate} \times \text{quote}$), positive non-zero, deterministic inversion | Tested in `tests/fx-rate.test.ts` | **PASS** |
+| **Currency Conversion** | `CurrencyConverter.convert()` enforces base match and preserves raw precision | Tested in `tests/currency-conversion.test.ts` | **PASS** |
+| **Database Schema** | Drizzle schema for `fx_rates` with `NUMERIC(24, 8)` and unique idempotency constraint | Tested in `tests/database-schema-fx.test.ts` | **PASS** |
+| **DDL Migration** | Sequentially numbered `0004_financial_precision_currency_semantics.sql` | Tested in `tests/database-migration-fx.test.ts` | **PASS** |
+| **API Endpoints** | `/api/v1/finance/currencies`, `/api/v1/finance/fx-rates` | Implemented and verified in `apps/web` | **PASS** |
+| **Boundary Isolation** | `@v-gold/core` has ZERO framework, HTTP, DB, or provider SDK imports | AST file inspection in `tests/architecture.test.ts` | **PASS** |
+| **Test Suite** | Vitest monorepo suite executes reliably | **175 passed / 0 skipped / 0 failed** (39 test files) | **PASS** |
 | **Typecheck** | TypeScript 5.7+ strict check across all workspaces & tests | **0 errors** | **PASS** |
-| **Production Build** | `npm run build` compiles all packages and Next.js web app (10 routes) | **Clean build** | **PASS** |
+| **Production Build** | `npm run build` compiles all packages and Next.js web app (12 routes) | **Clean build** | **PASS** |
 | **PostgreSQL Integration** | Real database availability check | **NOT AVAILABLE** (PSQL daemon not in sandbox; reported transparently) | **REPORTED** |
-| **Real Provider Integration** | Real market provider credentials in environment | **NOT AVAILABLE** (No external API keys in environment; reported transparently) | **REPORTED** |
-| **Stage Confinement** | Zero implementation of Stage 4.1 or Stage 5+ pricing engine features | Strictly Market Data Infrastructure only | **PASS** |
+| **Real Provider Integration** | External market provider credentials detection | **NOT AVAILABLE** (No external API keys in environment; reported transparently) | **REPORTED** |
+| **Stage Confinement** | Zero pricing engine or customer quote logic implemented | Strictly Financial Precision & Currency Semantics only | **PASS** |
 
 ---
 
-## File System Inventory (Stage 4 Additions)
+## File System Inventory (Stage 4.1 Additions)
 
 ```text
-packages/core/src/domain/market-data/
-├── market-unit.ts
-├── market-data-types.ts
-├── market-data-source.ts
-├── market-instrument.ts
-├── market-price.ts
-├── market-observation.ts
-├── market-data-freshness.policy.ts
-├── market-data-ingestion.service.ts
-└── market-data-query.service.ts
+packages/core/src/domain/finance/
+├── currency.ts (enhanced with metadata, fiat, accounting status, and Toman/Rial ratio)
+├── rounding-policy.ts (Three-tier precision architecture & explicit rounding modes)
+├── fx-rate.ts (Directional exchange rate value object with inversion)
+└── currency-conversion.ts (Authoritative currency conversion service)
 packages/core/src/ports/
-├── market-data-provider.port.ts
-├── market-observation.repository.port.ts
-├── market-instrument.repository.port.ts
-└── market-data-source.repository.port.ts
+└── fx-rate.repository.port.ts
 packages/database/src/
 ├── schema/
-│   ├── market-data-sources.ts
-│   ├── market-instruments.ts
-│   └── market-observations.ts
+│   └── fx-rates.ts
 ├── migrations/
-│   └── 0003_market_data_foundation.sql
+│   └── 0004_financial_precision_currency_semantics.sql
 ├── repositories/
-│   ├── drizzle-market-data-source.repository.ts
-│   ├── drizzle-market-instrument.repository.ts
-│   └── drizzle-market-observation.repository.ts
-├── adapters/
-│   ├── in-memory-market-data-source.repository.ts
-│   ├── in-memory-market-instrument.repository.ts
-│   └── in-memory-market-observation.repository.ts
-└── providers/
-    ├── unavailable-market-data.provider.ts
-    └── mock-market-data.provider.ts
+│   └── drizzle-fx-rate.repository.ts
+└── adapters/
+    └── in-memory-fx-rate.repository.ts
 apps/web/
-├── lib/market-data/
-│   └── market-data-container.ts
-└── app/api/v1/market-data/
-    ├── instruments/route.ts
-    ├── latest/route.ts
-    └── latest/[instrument]/route.ts
+├── lib/finance/
+│   └── finance-container.ts
+└── app/api/v1/finance/
+    ├── currencies/route.ts
+    └── fx-rates/route.ts
 tests/
-├── market-instrument.test.ts
-├── market-price.test.ts
-├── market-observation.test.ts
-├── market-data-freshness.test.ts
-├── market-data-decimal.test.ts
-├── market-data-provider.test.ts
-├── market-data-ingestion.service.test.ts
-├── market-data-query.service.test.ts
-├── database-schema-market-data.test.ts
-├── database-migration-market-data.test.ts
-└── api-market-data.test.ts
+├── currency-semantics.test.ts
+├── fx-rate.test.ts
+├── currency-conversion.test.ts
+├── financial-rounding-policy.test.ts
+├── financial-precision-invariants.test.ts
+├── database-schema-fx.test.ts
+├── database-migration-fx.test.ts
+└── api-finance.test.ts
 ```
 
 ---
 
 ## Invariant Adherence Verification
 
-* [x] Never invent live market data.
-* [x] Never present fake data as real.
-* [x] Never silently substitute stale data for fresh data.
-* [x] Authoritative market values strictly use Decimal.js.
-* [x] Preserve source identity, `observedAt`, and `ingestedAt`.
-* [x] External providers behind adapters; zero provider SDKs in core.
-* [x] No pricing engine or customer quote calculation implemented.
-* [x] Exactly Stage 4 completed.
-* [x] Engine stopped awaiting user authorization for Stage 4.1 or Stage 5.
+* [x] Every authoritative financial value calculates via Decimal.js.
+* [x] No `parseFloat()`, `Math.round()`, or binary float math in authoritative paths.
+* [x] Clear codified distinction between `MarketPrice` (quote per mass unit) and `Money` (balance).
+* [x] Exact deterministic 1:10 relationship between Iranian Toman and Rial.
+* [x] Directional FX rate modeling with arbitrary-precision inversion.
+* [x] Three-tier precision architecture: Calculation vs Storage vs Presentation.
+* [x] No pricing engine formulas (labor fee, taxes, margin, quotes) implemented in Stage 4.1.
+* [x] Exactly Stage 4.1 completed.
+* [x] Engine stopped awaiting user authorization for Stage 5.

@@ -9,7 +9,7 @@ The architectural design of **V-GOLD** adheres to **Onion / Clean / Hexagonal Ar
 > **"Simple Outside. Sophisticated Inside."**
 
 ### Core Principles
-1. **Domain Independence (The Dependency Rule):** Inner layers have zero knowledge of outer layers. Pure business logic in the domain layer has zero dependencies on React, Next.js, HTTP, cookies, databases (ORM), browser APIs, or third-party AI provider SDKs.
+1. **Domain Independence (The Dependency Rule):** Inner layers have zero knowledge of outer layers. Pure business logic in the domain layer has zero dependencies on React, Next.js, HTTP, cookies, databases (ORM), browser APIs, or third-party AI/market provider SDKs.
 2. **Authoritative Financial Integrity:** Every monetary calculation (prices, gold valuations, making fees, stone values, discounts, taxes, shipping, payment amounts) and weight computation is executed server-side using arbitrary-precision arithmetic (`Decimal.js`). Floating-point operations (`number`) are strictly prohibited in financial paths.
 3. **Truthful Data & Zero Hallucination:**
    - Gold market spot prices are never hallucinated; when live provider connections are unavailable, explicit `UNAVAILABLE` or deterministic `DEV/TEST` states are returned.
@@ -17,7 +17,7 @@ The architectural design of **V-GOLD** adheres to **Onion / Clean / Hexagonal Ar
    - Pricing engine (Stage 5) answers: *"How does V-GOLD calculate a product/customer price from market data?"*
    - AI systems can only perform presentation, styling, or generative suggestions grounded strictly in validated domain attributes (e.g. verified 18K purity, verified 5.2g weight).
 4. **Strict Multi-Tenant Isolation:** All marketplace, catalog, inventory, order, and seller operations are tenant-scoped (`storeId`, `tenantId`). Cross-tenant access is structurally prevented at both repository, database, and IAM membership levels.
-5. **Mutation Safety & Idempotency:** Sensitive write operations (order placement, payment processing, inventory reservations, market data ingestion) enforce deterministic idempotency.
+5. **Mutation Safety & Idempotency:** Sensitive write operations (order placement, payment processing, inventory reservations, market data ingestion, FX persistence) enforce deterministic idempotency.
 
 ---
 
@@ -29,12 +29,14 @@ The architectural design of **V-GOLD** adheres to **Onion / Clean / Hexagonal Ar
 │          Next.js App Router (React 19, Server/         │
 │          Client Components, Persian RTL / En LTR)      │
 │          apps/web (api/v1/auth/..., api/v1/market-data)│
+│          api/v1/finance/...                            │
 └───────────────────────────┬────────────────────────────┘
                             │
 ┌───────────────────────────▼────────────────────────────┐
 │                   Application Layer                    │
 │      AuthService, MarketDataQueryService,              │
-│      MarketDataIngestionService, FreshnessPolicy       │
+│      MarketDataIngestionService, FreshnessPolicy,      │
+│      FinancialRoundingPolicy, CurrencyConverter        │
 └───────────────────────────┬────────────────────────────┘
                             │
 ┌───────────────────────────▼────────────────────────────┐
@@ -42,7 +44,8 @@ The architectural design of **V-GOLD** adheres to **Onion / Clean / Hexagonal Ar
 │        Entities (User, TenantMembership, Session,      │
 │        MarketDataSource, MarketInstrument,             │
 │        MarketObservation),                             │
-│        Value Objects (Email, PasswordHash, MarketPrice)│
+│        Value Objects (Email, PasswordHash, Money,      │
+│        MarketPrice, FxRate, GoldPurity, Weight)        │
 │        packages/core                                   │
 └───────────────────────────┬────────────────────────────┘
                             │ (Defines Ports / Interfaces)
@@ -102,29 +105,49 @@ It is completely decoupled from the Stage 5 Pricing Engine, which later answers:
   - `STALE`: Observation age exceeds threshold.
   - `UNAVAILABLE`: No observation exists or provider offline.
 
-### 4.3 Provider Port & Adapter Isolation
-* **Port (`MarketDataProviderPort`):** Neutral contract specifying provider capabilities (`supportedSymbols`, `supportedUnits`, `qualitiesProvided`, `isRealTime`). External SDKs, HTTP clients, and credentials never leak into core.
-* **Production Default (`UnavailableMarketDataProvider`):** When no API credentials exist in the environment, returns explicit `PROVIDER_UNAVAILABLE` status (HTTP 503). Never fabricates market rates.
-* **Test Adapter (`MockMarketDataProvider`):** Deterministic mock adapter strictly for automated tests, explicitly flagged `isTestOnly = true`.
+---
 
-### 4.4 Ingestion & Idempotency
-* `MarketDataIngestionService` validates provider capabilities, checks instrument/source registration, verifies currency and unit parity, and enforces uniqueness across `(sourceId, instrumentId, observedAt)`. Duplicate ingestion returns `isDuplicate: true` without creating redundant database records.
+## 5. Financial Precision & Currency Semantics Architecture (Stage 4.1 Implemented)
 
-### 4.5 Scope & Platform Nature
-Precious metal market rates represent platform-global reference realities rather than tenant-specific data. Market data is stored globally and made available via `/api/v1/market-data/` endpoints, avoiding redundant per-tenant duplication while respecting authentication and rate-limiting boundaries.
+### 5.1 Three-Tier Precision Architecture
+V-GOLD explicitly separates precision concerns into three non-interchangeable tiers:
+1. **Calculation Precision:** Internal computations execute in arbitrary precision via `Decimal.js` (default: 28+ significant digits). Intermediate operations must **never be prematurely rounded**.
+2. **Storage Precision:** Database persistence in PostgreSQL uses `NUMERIC(24, 8)` to ensure zero truncation across all currencies and micro-weights.
+3. **Presentation Precision:** Final rounding occurs solely at the presentation boundary, formatted according to currency minor units (e.g. 2 decimal places for USD/EUR, 0 decimal places for IRR/TOMAN) using deterministic rounding modes.
+
+### 5.2 Currency Semantics & The Toman/Rial Relationship
+* **Statutory Currency (`IRR`):** Official legal and banking currency of Iran. 0 standard minor units.
+* **Commercial Currency (`TOMAN`):** Commercial unit of account widely used in jewelry bazaars. 0 standard minor units.
+* **Deterministic Conversion Ratio:**
+  $$\text{1 Toman} = 10 \text{ Iranian Rials (Exact Decimal)}$$
+  Codified in `IRR_PER_TOMAN = new Decimal(10)` and `TOMAN_PER_IRR = new Decimal(0.1)`. Conversions are executed via dedicated domain primitives `CurrencyConverter.tomanToIrr()` and `CurrencyConverter.irrToToman()`.
+* **International Currencies (`USD`, `EUR`):** Fiat reference currencies with 2 standard minor units (cents).
+
+### 5.3 Directional Foreign Exchange (FX) Rates
+* **`FxRate`:** Directional value object representing:
+  $$1 \text{ baseCurrency} = \text{rate} \times \text{quoteCurrency}$$
+  Enforces `rate > 0` and `baseCurrency !== quoteCurrency`.
+* **Inversion:** Deterministically generates the reciprocal rate:
+  $$\text{inverseRate} = \frac{1}{\text{rate}}$$
+  Calculated with high Decimal precision without IEEE-754 binary floating-point pollution.
+* **`CurrencyConverter`:** Converts `Money` amounts across currencies via `Money(base) * FxRate(base -> quote) = Money(quote)`. Verifies base currency parity and preserves raw intermediate decimals.
+
+### 5.4 Distinction between `MarketPrice` and `Money`
+* **`MarketPrice`:** Represents an *external commodity quote per unit of mass* (e.g. $2650.50 \text{ USD} / \text{troy ounce}$ or $54,000,000 \text{ IRR} / \text{gram}$). It encapsulates a trading unit (`MarketUnitCode`).
+* **`Money`:** Represents a *discrete monetary value or transaction balance* ($\text{amount} + \text{currency}$). It does not represent a unit price or physical mass.
 
 ---
 
-## 5. Architectural Decision Records (ADRs)
+## 6. Architectural Decision Records (ADRs)
 
 * **ADR-0001:** Adoption of Hexagonal Architecture & Clean Separation (Stage 1)
 * **ADR-0002:** Arbitrary-Precision Financial Engine with Decimal.js (Stage 1 & 2)
 * **ADR-0003:** Dedicated AI Gateway with Factual Grounding (Stage 1)
 * **ADR-0004:** Multi-Tenant Data Isolation Strategy (Stage 1, 2, 3)
 * **ADR-0005:** Idempotency Pattern for All State Mutations (Accepted)
-* **ADR-0006:** Sequential Immutable Migrations (Stage 2: `0001`, Stage 3: `0002`, Stage 4: `0003`)
+* **ADR-0006:** Sequential Immutable Migrations (Stage 2: `0001`, Stage 3: `0002`, Stage 4: `0003`, Stage 4.1: `0004`)
 * **ADR-0007:** Bilingual Architecture with Native RTL Support (Stage 1)
-* **ADR-0008:** In-Memory Repository Testing Strategy (Stage 1, 2, 3, 4)
+* **ADR-0008:** In-Memory Repository Testing Strategy (Stage 1, 2, 3, 4, 4.1)
 * **ADR-0009:** Separation of Custom Manufacturing (RFQ) from Standard Commerce (Accepted)
 * **ADR-0010:** Digital Jewelry Passport & Style DNA Extensibility (Accepted)
 * **ADR-0011:** Canonical Grams and Millesimal Fineness for Precious Metal Primitives (Stage 2)
@@ -132,33 +155,36 @@ Precious metal market rates represent platform-global reference realities rather
 * **ADR-0013:** Scrypt Key Derivation Function for Password Security (Stage 3)
 * **ADR-0014:** Server-Side State-Backed Sessions with HttpOnly SameSite Cookies (Stage 3)
 * **ADR-0015:** Tenant-Scoped Role Assignment and Centralized Domain Authorization (Stage 3)
+* **ADR-0016:** Market Data Provider Abstraction & Capability Model (Stage 4)
+* **ADR-0017:** Append-Only Immutable Market Observation History & Idempotency (Stage 4)
+* **ADR-0018:** Strict Freshness Policy and Truthful Unavailable States (Stage 4)
+* **ADR-0019:** Arbitrary Decimal Precision and Unit Semantics for Precious Metals (Stage 4)
 
-### ADR-0016: Market Data Provider Abstraction & Capability Model
-* **Status:** Accepted (Stage 4)
-* **Context:** Market data for precious metals and foreign exchange is sourced from varied international and regional providers (e.g. LBMA, CME, TGJU, central banks). Each provider has distinct capabilities, supported symbols, rate limits, and latency profiles.
-* **Decision:** Decouple all external providers behind `MarketDataProviderPort`. Providers explicitly declare capabilities (`ProviderCapabilities`). External SDKs and HTTP clients remain strictly in outer adapters. When external provider credentials are not supplied, the platform falls back to `UnavailableMarketDataProvider` returning truthful unavailable states without hallucinating data.
+### ADR-0020: Three-Tier Financial Precision Architecture and Explicit Rounding Policy
+* **Status:** Accepted (Stage 4.1)
+* **Context:** Financial applications in gold and jewelry suffer from rounding errors when intermediate formulas round prematurely. Furthermore, different jurisdictions and currencies require different scale rules (e.g. cents in USD vs whole units in Tomans).
+* **Decision:** Establish a strict Three-Tier Precision Architecture:
+  1. *Calculation Precision:* Raw Decimal.js arithmetic with no rounding during intermediate computation chains.
+  2. *Storage Precision:* PostgreSQL `NUMERIC(24, 8)` to store authoritative values up to 8 decimal places.
+  3. *Presentation Precision:* Explicit rounding solely at the final boundary using `ROUND_HALF_UP` (or `ROUND_HALF_EVEN` where banking rules apply).
 
-### ADR-0017: Append-Only Immutable Market Observation History & Idempotency
-* **Status:** Accepted (Stage 4)
-* **Context:** External market rates fluctuate constantly. Financial auditability requires preserving exact historical tick records rather than overwriting existing records when newer rates arrive.
-* **Decision:** Observations in `market_observations` are strictly append-only. Each record captures distinct `observedAt` and `ingestedAt` timestamps. Idempotency is enforced by a composite unique constraint on `(source_id, instrument_id, observed_at)`. Foreign keys referencing instruments and sources enforce `ON DELETE RESTRICT` to protect audit trails.
+### ADR-0021: Directional Foreign Exchange (FX) Rate Modeling and Deterministic Inversion
+* **Status:** Accepted (Stage 4.1)
+* **Context:** Currency conversion requires knowing the exact direction of quotes (e.g. `USD/EUR` vs `EUR/USD`). Implicitly swapping base and quote currencies creates 100x errors.
+* **Decision:** Model `FxRate` with explicit `baseCurrency` and `quoteCurrency` representing $1 \text{ base} = \text{rate} \times \text{quote}$. Inversion is explicitly handled via `invert()`, computing $\frac{1}{\text{rate}}$ using arbitrary precision Decimal arithmetic.
 
-### ADR-0018: Strict Freshness Policy and Truthful Unavailable States
-* **Status:** Accepted (Stage 4)
-* **Context:** Returning the newest database row without verifying its age risks treating yesterday's market close as live pricing during high-volatility events. Silently inventing fallback prices violates V-GOLD's foundational integrity mandate.
-* **Decision:** Implement `MarketDataFreshnessPolicy` with explicit maximum-age thresholds by quote quality (`REAL_TIME`: 5 mins, `DELAYED`: 30 mins, `CLOSE`: 24 hrs). Queries evaluate age and return explicit `FRESH`, `STALE`, or `UNAVAILABLE` states. UI and pricing layers must never receive stale data masquerading as fresh.
-
-### ADR-0019: Arbitrary Decimal Precision and Unit Semantics for Precious Metals
-* **Status:** Accepted (Stage 4)
-* **Context:** Commodity prices span wide magnitudes—from fractional USD cents per gram to tens of millions of Iranian Rials per gram. JavaScript IEEE-754 binary floating-point numbers introduce fatal truncation and rounding drift.
-* **Decision:** All market rates utilize `Decimal.js` internally, `NUMERIC(24, 8)` in PostgreSQL DDL migrations, and exact decimal strings in serialization DTOs. Storage and aggregation prohibit silent rounding. Display rounding occurs only at the final presentation boundary using explicit `ROUND_HALF_UP`.
+### ADR-0022: Statutory Iranian Toman vs Rial 1:10 Deterministic Conversion
+* **Status:** Accepted (Stage 4.1)
+* **Context:** In Iranian commerce, official accounting is maintained in Iranian Rials (IRR), while everyday jewelry pricing and buyer negotiations occur in Iranian Tomans (TOMAN). Hardcoding division or multiplication by 10 across scattered UI or controller files causes drift.
+* **Decision:** Formally codify the 1:10 ratio as domain constants `IRR_PER_TOMAN = 10` and `TOMAN_PER_IRR = 0.1`. Provide first-class domain methods `CurrencyConverter.tomanToIrr()` and `CurrencyConverter.irrToToman()` that guarantee exact mathematical conversion without floating-point conversion.
 
 ---
 
-## 6. Security & Boundary Hardening Status
+## 7. Security & Boundary Hardening Status
 
 * **Credential Protection:** Provider API keys and connection credentials never enter domain entities, repository records, or API serialization DTOs.
 * **IDOR Protection:** Verified in `tests/idor-security.test.ts`. Cross-tenant resource queries or mutations are strictly rejected regardless of user-supplied tenant IDs.
 * **User Enumeration Prevention:** Login failures return uniform `401 Unauthorized` ("Invalid email or password.") whether the email exists or not.
 * **Credential Leakage Prevention:** DTOs never serialize `password_hash`. `PasswordHash.toString()` redacts hash contents.
+* **Financial Rounding Attack Prevention:** Premature rounding is structurally prohibited; calculations preserve high-precision decimal representation.
 * **Known Future Hardening Items (Deferred to Stage 23):** Distributed Redis rate limiter for login and market data quote endpoints; Multi-Factor Authentication (MFA); WebAuthn/Passkey integration.

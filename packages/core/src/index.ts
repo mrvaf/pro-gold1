@@ -18,10 +18,14 @@ export * from './ports/market-data-provider.port.js';
 export * from './ports/market-observation.repository.port.js';
 export * from './ports/market-instrument.repository.port.js';
 export * from './ports/market-data-source.repository.port.js';
+export * from './ports/fx-rate.repository.port.js';
 
 // Domain Foundations (Stage 2)
 export * from './domain/finance/currency.js';
 export * from './domain/finance/money.js';
+export * from './domain/finance/rounding-policy.js';
+export * from './domain/finance/fx-rate.js';
+export * from './domain/finance/currency-conversion.js';
 export * from './domain/material/gold-purity.js';
 export * from './domain/material/weight.js';
 export * from './domain/identity/actor-reference.js';

@@ -6,3 +6,4 @@ export * from './sessions.js';
 export * from './market-data-sources.js';
 export * from './market-instruments.js';
 export * from './market-observations.js';
+export * from './fx-rates.js';

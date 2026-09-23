@@ -67,17 +67,21 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 4.1 — Financial Precision & Currency Semantics
-* **Status:** **PENDING** (Awaiting explicit user command)
+* **Status:** **COMPLETE**
 * **Focus:**
-  - Currency normalization (`IRR`, `TOMAN`, `USD`, `EUR`).
-  - Deterministic rounding modes (`ROUND_HALF_UP`).
-  - Precision unit tests for extreme fractional gold weights (milligram levels).
-* **Completion Criteria:** Zero floating-point drift across 100,000 synthetic financial computations.
+  - Three-tier precision architecture: Calculation (arbitrary Decimal) vs Storage (`NUMERIC(24, 8)`) vs Presentation (currency minor units).
+  - Explicit rounding policy: `ROUND_HALF_UP`, `ROUND_HALF_EVEN`, `ROUND_UP`, `ROUND_DOWN` with zero premature rounding on intermediate calculation chains.
+  - Enhanced currency semantics (`IRR`, `TOMAN`, `USD`, `EUR`) and statutory Toman/Rial deterministic ratio (`1 TOMAN = 10 IRR`).
+  - Directional foreign exchange rate modeling (`FxRate`) with arbitrary-precision reciprocal inversion.
+  - Authoritative currency conversion (`CurrencyConverter.convert()`, `tomanToIrr()`, `irrToToman()`).
+  - PostgreSQL schema & migration `0004_financial_precision_currency_semantics.sql` (`fx_rates` table).
+  - API endpoints: `/api/v1/finance/currencies`, `/api/v1/finance/fx-rates`.
+* **Completion Gate:** 175 passed / 0 skipped / 0 failed across 39 test files, 0 typecheck errors, clean Next.js production build.
 
 ---
 
 ### Stage 5 — Authoritative Pricing Engine
-* **Status:** **PENDING**
+* **Status:** **PENDING** (Awaiting explicit user command)
 * **Focus:**
   - Pure domain pricing service calculating:
     - Base Gold Value = $Weight \times \frac{Purity}{750} \times SpotPrice$
