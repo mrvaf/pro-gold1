@@ -225,10 +225,20 @@ PricingBreakdown
 - `STALE`: If `allowStaleMarketData = false`, calculation fails with `MARKET_DATA_STALE`. If allowed, calculation proceeds and flags `isStaleMarketData = true` in `PricingResult`.
 - `UNAVAILABLE`: Calculation strictly rejected with `MARKET_DATA_UNAVAILABLE`. No synthetic or hallucinated prices.
 
-### 6.4 Rule Versioning & Historical Reproducibility
-Pricing rules are versioned entities. For any historical transaction, reproducing the price with the same inputs, same rule version, and same market observation timestamp produces the exact identical price bit-for-bit.
+### 6.4 Rule Versioning, Immutability & Historical Reproducibility
+* **Snapshot of Applied Configuration:** `PricingResult` does not merely record a `ruleId` and `ruleVersion`; it snapshots the entire `effectiveConfig` (making charge type/rate, margin type/rate, tax base/rate, rounding mode/scale), `isReferenceSample` status, and `specificationSource`. If a rule entity in the database is subsequently modified, deactivated, or deleted, historical quotes remain 100% reproducible and auditable from their own immutable record.
+* **Prohibition of Silent Commercial Defaults:** If an API client or tenant requests a quote without specifying a `ruleId`, and no explicit authoritative rule has been configured for that tenant, the engine strictly rejects the request with `EXPLICIT_RULE_REQUIRED`. The system never picks a "default" rule with undocumented commercial percentages.
 
-### 6.5 Explicitly Unimplemented Specifications (Stage Confinement)
+### 6.5 Segregation of Authoritative Rules vs. Reference Samples
+* **Reference / Sample Rules:** Rules used for demonstrations, benchmarks, or unit tests are explicitly tagged with `isReferenceSample: true` and `specificationSource: 'REFERENCE_SAMPLE_NON_AUTHORITATIVE'`. The repository method `findEffective()` excludes reference sample rules by default (`includeReferenceSamples: false`). They can only be executed when their explicit `ruleId` is supplied in test/sample contexts.
+* **Authoritative Rules:** Configured by an authenticated tenant or authorized platform administrator with explicit specification sources (e.g. signed store agreements or statutory mandates).
+
+### 6.6 Separation of Precious Metal Mass and Gemstone Carats
+* **Gold Body Mass:** Precious metal bulk mass is strictly measured and accepted in `grams`, `mesghal`, or `troyOunces`.
+* **Gemstone Carats:** Carats ($1\text{ ct} = 0.2\text{ g}$) are strictly reserved for gemstone components and must never be accepted as the gold body mass. Any attempt to supply `carats` as the metal body weight is rejected with `INVALID_WEIGHT`.
+* **Gemstone Valuation:** Stage 5 implements pure monetary aggregation (`stoneValue` passthrough). Automated gemstone valuation (4Cs appraisal, Rapaport diamond lists) is **NOT IMPLEMENTED** in Stage 5.
+
+### 6.7 Explicitly Unimplemented Specifications (Stage Confinement)
 - Dynamic multi-seller RFQ reverse bidding: **NOT IMPLEMENTED — specification not defined**.
 - 4Cs Diamond Rapaport pricing matrix: **NOT IMPLEMENTED — specification not defined**.
 - Customer coupon / loyalty discount stacking: **NOT IMPLEMENTED (deferred to Stage 17)**.
@@ -243,7 +253,7 @@ Pricing rules are versioned entities. For any historical transaction, reproducin
 * **ADR-0003:** Dedicated AI Gateway with Factual Grounding (Stage 1)
 * **ADR-0004:** Multi-Tenant Data Isolation Strategy (Stage 1, 2, 3)
 * **ADR-0005:** Idempotency Pattern for All State Mutations (Accepted)
-* **ADR-0006:** Sequential Immutable Migrations (Stage 2: `0001`, Stage 3: `0002`, Stage 4: `0003`, Stage 4.1: `0004`, Stage 5: `0005`)
+* **ADR-0006:** Sequential Immutable Migrations (Stage 2: `0001`, Stage 3: `0002`, Stage 4: `0003`, Stage 4.1: `0004`, Stage 5: `0005`, Stage 5 Audit: `0006`)
 * **ADR-0007:** Bilingual Architecture with Native RTL Support (Stage 1)
 * **ADR-0008:** In-Memory Repository Testing Strategy (Stage 1, 2, 3, 4, 4.1, 5)
 * **ADR-0009:** Separation of Custom Manufacturing (RFQ) from Standard Commerce (Accepted)
@@ -260,21 +270,14 @@ Pricing rules are versioned entities. For any historical transaction, reproducin
 * **ADR-0020:** Three-Tier Financial Precision Architecture and Explicit Rounding Policy (Stage 4.1)
 * **ADR-0021:** Directional Foreign Exchange (FX) Rate Modeling and Deterministic Inversion (Stage 4.1)
 * **ADR-0022:** Statutory Iranian Toman vs Rial 1:10 Deterministic Conversion (Stage 4.1)
+* **ADR-0023:** Explainable Calculation Breakdown & Line Item Mathematical Invariant (Stage 5)
+* **ADR-0024:** Iranian Statutory Gold VAT Reform Compliance (VAT on Labor and Margin Only) (Stage 5)
+* **ADR-0025:** Unit-Aware Canonical Spot Rate Normalization (Stage 5)
 
-### ADR-0023: Explainable Calculation Breakdown & Line Item Mathematical Invariant
-* **Status:** Accepted (Stage 5)
-* **Context:** Black-box pricing calculators that emit only a single final price prevent auditing, regulatory compliance, and transparent customer trust in jewelry commerce.
-* **Decision:** `PricingResult` must encapsulate a complete `PricingBreakdown` consisting of granular line items (Base Metal, Making Charge, Margin, Stone Value, Tax/VAT, Rounding Adjustment). The engine validates the mathematical invariant $\sum \text{lineItems} = \text{finalAmount}$ before completing any quote.
-
-### ADR-0024: Iranian Statutory Gold VAT Reform Compliance (VAT on Labor and Margin Only)
-* **Status:** Accepted (Stage 5)
-* **Context:** In Iranian gold markets, following the tax reform of 1400 (2021), raw gold bullion is legally exempt from VAT. Applying VAT to the entire piece constitutes an illegal double tax. Conversely, international markets levy VAT on the total retail price.
-* **Decision:** Codify configurable taxable bases in `PricingRule`: `MARGIN_AND_FEE_ONLY` (Iranian statutory gold rule where $\text{taxBase} = \text{makingCharge} + \text{sellerMargin}$), `TOTAL_VALUE` (international retail VAT), and `EXEMPT`.
-
-### ADR-0025: Unit-Aware Canonical Spot Rate Normalization
-* **Status:** Accepted (Stage 5)
-* **Context:** Gold spot prices originate in diverse regional units (e.g. LBMA quotes in Troy Ounces, Tehran quotes in Mesghals). Computing gold values without explicit unit conversion causes orders-of-magnitude financial errors.
-* **Decision:** Implement `PricingUnitConverter` to transform external spot quotes to canonical pure-gram rates using arbitrary Decimal arithmetic, preserving lossless mass relationships.
+### ADR-0026: Strict Segregation of Reference Rules and Prohibition of Silent Commercial Defaults
+* **Status:** Accepted (Stage 5 Final Audit)
+* **Context:** Pre-seeding commercial sample rules (e.g. 15% making, 7% margin) without explicit tags caused the engine to silently apply commercial percentages when no `ruleId` was provided.
+* **Decision:** Tag all non-authoritative sample rules with `isReferenceSample: true` and `specificationSource: 'REFERENCE_SAMPLE_NON_AUTHORITATIVE'`. Require explicit `ruleId` or an explicit tenant-configured rule; if neither exists, reject calculation with `EXPLICIT_RULE_REQUIRED`. Snapshot the complete effective configuration inside every `PricingResult`.
 
 ---
 

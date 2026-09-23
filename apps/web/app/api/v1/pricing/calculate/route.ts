@@ -12,18 +12,24 @@ const calculateQuoteSchema = z.object({
       carats: z.string().optional(),
     })
     .refine(
-      (w) => w.grams !== undefined || w.troyOunces !== undefined || w.mesghal !== undefined || w.carats !== undefined,
-      { message: 'At least one weight unit must be specified (grams, troyOunces, mesghal, or carats).' }
+      (w) =>
+        w.grams !== undefined ||
+        w.troyOunces !== undefined ||
+        w.mesghal !== undefined ||
+        w.carats !== undefined,
+      {
+        message:
+          'At least one precious metal weight unit must be specified (grams, troyOunces, or mesghal).',
+      }
     ),
   purity: z
     .object({
       fineness: z.string().optional(),
       karat: z.string().optional(),
     })
-    .refine(
-      (p) => p.fineness !== undefined || p.karat !== undefined,
-      { message: 'At least one purity metric must be specified (fineness or karat).' }
-    ),
+    .refine((p) => p.fineness !== undefined || p.karat !== undefined, {
+      message: 'At least one purity metric must be specified (fineness or karat).',
+    }),
   targetCurrency: z.enum(['IRR', 'TOMAN', 'USD', 'EUR']),
   instrumentSymbol: z.string().min(1, 'Instrument symbol is required (e.g. "XAU/USD", "XAU/IRR")'),
   ruleId: z.string().optional(),

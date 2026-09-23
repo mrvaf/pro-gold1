@@ -8,7 +8,8 @@ export interface PricingRuleRepositoryPort {
     atDate: Date;
     tenantId?: TenantId | undefined;
     ruleId?: PricingRuleId | undefined;
+    includeReferenceSamples?: boolean | undefined;
   }): Promise<PricingRule | null>;
-  listByTenant(tenantId?: TenantId): Promise<PricingRule[]>;
+  listByTenant(tenantId?: TenantId, includeReferenceSamples?: boolean | undefined): Promise<PricingRule[]>;
   count(): Promise<number>;
 }

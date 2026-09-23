@@ -23,6 +23,7 @@ export const pricingResultsTable = pgTable(
     purityFineness: numeric('purity_fineness', { precision: 6, scale: 4 }).notNull(),
     breakdownJson: text('breakdown_json').notNull(),
     inputsJson: text('inputs_json').notNull(),
+    ruleReferenceJson: text('rule_reference_json'),
     roundingMode: varchar('rounding_mode', { length: 32 }).notNull(),
     roundingScale: integer('rounding_scale').notNull(),
     calculatedAt: timestamp('calculated_at', { withTimezone: true }).notNull(),

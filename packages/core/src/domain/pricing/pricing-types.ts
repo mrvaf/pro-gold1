@@ -15,7 +15,8 @@ export type PricingErrorCode =
   | 'FX_RATE_MISSING'
   | 'RULE_NOT_FOUND'
   | 'RULE_EXPIRED'
-  | 'IDOR_ACCESS_DENIED';
+  | 'IDOR_ACCESS_DENIED'
+  | 'EXPLICIT_RULE_REQUIRED';
 
 /**
  * Making charge (ojrat) calculation methods supported by the pricing engine.

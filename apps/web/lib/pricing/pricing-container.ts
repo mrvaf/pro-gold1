@@ -39,39 +39,46 @@ class PricingContainer {
   private initializeReferenceRules() {
     if (this.isInitialized) return;
 
-    // 1. Iranian Bazaar 18K Standard Rule (Statutory: VAT only on ojrat + sood)
-    const iranBazaarRule = PricingRule.create({
+    // 1. Reference Sample: Iranian Bazaar 18K Model (NON-AUTHORITATIVE REFERENCE SAMPLE)
+    // NOTE: Making 15% and margin 7% are commercial bazaar conventions for certain jewelry items,
+    // NOT legal mandates. 9% VAT on ojrat + margin is statutory under Article 26 of VAT Law 1400.
+    const iranBazaarSampleRule = PricingRule.create({
       id: 'rule_iran_bazaar_18k_v1',
-      name: 'Tehran Gold Bazaar 18K Standard (اجرت ۱۵٪، سود ۷٪، مالیات ۹٪ بر اجرت و سود)',
+      name: '[REFERENCE_SAMPLE_ONLY] Tehran Gold Bazaar 18K Sample Model (Ojrat 15%, Margin 7%, VAT 9% on Ojrat+Margin)',
       version: '1',
+      isReferenceSample: true,
+      specificationSource: 'REFERENCE_SAMPLE_NON_AUTHORITATIVE',
       effectiveFrom: new Date('2024-01-01T00:00:00Z'),
       config: {
         makingCharge: {
           type: 'PERCENTAGE',
-          rate: '0.15', // 15% ojrat
+          rate: '0.15',
         },
         margin: {
           type: 'PERCENTAGE',
-          rate: '0.07', // 7% seller margin
+          rate: '0.07',
         },
         tax: {
-          taxableBase: 'MARGIN_AND_FEE_ONLY', // Iranian gold tax reform 1400
-          rate: '0.09', // 9% VAT
+          taxableBase: 'MARGIN_AND_FEE_ONLY', // Article 26 VAT Law 1400
+          rate: '0.09',
         },
         roundingMode: 'HALF_UP',
         roundingScale: 0,
       },
     });
 
-    if (iranBazaarRule.isOk) {
-      this.ruleRepo.save(iranBazaarRule.value);
+    if (iranBazaarSampleRule.isOk) {
+      this.ruleRepo.save(iranBazaarSampleRule.value);
     }
 
-    // 2. Iranian Raw Bullion / Melt (Abshodeh) Rule
-    const abshodehRule = PricingRule.create({
+    // 2. Reference Sample: Iranian Raw Bullion / Melt (Abshodeh) Sample
+    // NOTE: Raw bullion is exempt from VAT under Art. 26; workshop assay/melting service fees are taxable if billed separately.
+    const abshodehSampleRule = PricingRule.create({
       id: 'rule_iran_bullion_melt_v1',
-      name: 'Iranian Raw Melt / Bullion (طلای آبشده)',
+      name: '[REFERENCE_SAMPLE_ONLY] Iranian Raw Melt / Bullion Sample (طلای آبشده)',
       version: '1',
+      isReferenceSample: true,
+      specificationSource: 'REFERENCE_SAMPLE_NON_AUTHORITATIVE',
       effectiveFrom: new Date('2024-01-01T00:00:00Z'),
       config: {
         makingCharge: {
@@ -80,7 +87,7 @@ class PricingContainer {
         },
         margin: {
           type: 'PERCENTAGE',
-          rate: '0.01', // 1% wholesale margin
+          rate: '0.01',
         },
         tax: {
           taxableBase: 'EXEMPT',
@@ -91,36 +98,38 @@ class PricingContainer {
       },
     });
 
-    if (abshodehRule.isOk) {
-      this.ruleRepo.save(abshodehRule.value);
+    if (abshodehSampleRule.isOk) {
+      this.ruleRepo.save(abshodehSampleRule.value);
     }
 
-    // 3. International Retail 18K Standard Rule (USD/EUR, cents rounding)
-    const globalRetailRule = PricingRule.create({
+    // 3. Reference Sample: International Retail Sample Model (NON-AUTHORITATIVE REFERENCE SAMPLE)
+    const globalRetailSampleRule = PricingRule.create({
       id: 'rule_global_retail_18k_v1',
-      name: 'Global Retail Jewelry 18K Standard',
+      name: '[REFERENCE_SAMPLE_ONLY] Global Retail Jewelry 18K Sample Model',
       version: '1',
+      isReferenceSample: true,
+      specificationSource: 'REFERENCE_SAMPLE_NON_AUTHORITATIVE',
       effectiveFrom: new Date('2024-01-01T00:00:00Z'),
       config: {
         makingCharge: {
           type: 'PERCENTAGE',
-          rate: '0.18', // 18% making fee
+          rate: '0.18',
         },
         margin: {
           type: 'PERCENTAGE',
-          rate: '0.10', // 10% retail margin
+          rate: '0.10',
         },
         tax: {
           taxableBase: 'TOTAL_VALUE',
-          rate: '0.00', // Pre-tax retail quote
+          rate: '0.00',
         },
         roundingMode: 'HALF_UP',
-        roundingScale: 2, // Cents
+        roundingScale: 2,
       },
     });
 
-    if (globalRetailRule.isOk) {
-      this.ruleRepo.save(globalRetailRule.value);
+    if (globalRetailSampleRule.isOk) {
+      this.ruleRepo.save(globalRetailSampleRule.value);
     }
 
     this.isInitialized = true;

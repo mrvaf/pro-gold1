@@ -368,6 +368,9 @@ export class PricingEngine {
         ruleId: context.rule.id,
         ruleName: context.rule.name,
         ruleVersion: context.rule.version,
+        isReferenceSample: context.rule.isReferenceSample,
+        specificationSource: context.rule.specificationSource,
+        effectiveConfig: context.rule.config,
       },
       rounding: {
         mode: context.rule.config.roundingMode,

@@ -12,6 +12,7 @@ import {
   PricingBreakdown,
   type MarketDataStatus,
   type RoundingModeKey,
+  type RuleReferenceSnapshot,
 } from '@v-gold/core';
 import { Decimal } from 'decimal.js';
 import {
@@ -53,6 +54,34 @@ export const toDomainPricingResult = (record: PricingResultRecord): PricingResul
     finalAmount: Money.create(parsedBreakdown.finalAmount, currency).unwrap(),
   });
 
+  let ruleReference: RuleReferenceSnapshot;
+  if (record.ruleReferenceJson) {
+    ruleReference = JSON.parse(record.ruleReferenceJson);
+  } else {
+    ruleReference = {
+      ruleId: record.ruleId,
+      ruleName: record.ruleName,
+      ruleVersion: record.ruleVersion,
+      isReferenceSample: false,
+      effectiveConfig: {
+        makingCharge: {
+          type: parsedBreakdown.makingCharge.type,
+          rate: parsedBreakdown.makingCharge.rate,
+        },
+        margin: {
+          type: parsedBreakdown.sellerMargin.type,
+          rate: parsedBreakdown.sellerMargin.rate,
+        },
+        tax: {
+          taxableBase: parsedBreakdown.tax.taxableBase,
+          rate: parsedBreakdown.tax.rate,
+        },
+        roundingMode: record.roundingMode as RoundingModeKey,
+        roundingScale: record.roundingScale,
+      },
+    };
+  }
+
   return new PricingResult(createEntityId<PricingResultId>(record.id), {
     tenantId: record.tenantId ? createEntityId<TenantId>(record.tenantId) : undefined,
     storeId: record.storeId ? createEntityId<StoreId>(record.storeId) : undefined,
@@ -69,11 +98,7 @@ export const toDomainPricingResult = (record: PricingResultRecord): PricingResul
       observedAt: record.marketObservedAt,
       freshnessStatus: record.freshnessStatus as MarketDataStatus,
     },
-    ruleReference: {
-      ruleId: record.ruleId,
-      ruleName: record.ruleName,
-      ruleVersion: record.ruleVersion,
-    },
+    ruleReference,
     rounding: {
       mode: record.roundingMode as RoundingModeKey,
       scale: record.roundingScale,
@@ -105,6 +130,7 @@ export const toDatabasePricingResult = (result: PricingResult): InsertPricingRes
   purityFineness: result.inputs.purityFineness,
   breakdownJson: JSON.stringify(result.breakdown.rawProps),
   inputsJson: JSON.stringify(result.inputs),
+  ruleReferenceJson: JSON.stringify(result.ruleReference),
   roundingMode: result.rounding.mode,
   roundingScale: result.rounding.scale,
   calculatedAt: result.calculatedAt,

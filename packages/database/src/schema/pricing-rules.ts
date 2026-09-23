@@ -1,4 +1,4 @@
-import { pgTable, varchar, numeric, timestamp, integer, index } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, numeric, timestamp, integer, boolean, index } from 'drizzle-orm/pg-core';
 
 export const pricingRulesTable = pgTable(
   'pricing_rules',
@@ -18,6 +18,8 @@ export const pricingRulesTable = pgTable(
     taxRate: numeric('tax_rate', { precision: 24, scale: 8 }).notNull(),
     roundingMode: varchar('rounding_mode', { length: 32 }).notNull(),
     roundingScale: integer('rounding_scale'),
+    isReferenceSample: boolean('is_reference_sample').notNull().default(false),
+    specificationSource: varchar('specification_source', { length: 255 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }),
   },

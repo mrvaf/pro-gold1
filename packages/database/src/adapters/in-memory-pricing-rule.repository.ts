@@ -29,12 +29,18 @@ export class InMemoryPricingRuleRepository implements PricingRuleRepositoryPort 
     atDate: Date;
     tenantId?: TenantId | undefined;
     ruleId?: PricingRuleId | undefined;
+    includeReferenceSamples?: boolean | undefined;
   }): Promise<PricingRule | null> {
     const all = Array.from(this.rules.values());
 
     const matching = all.filter((r) => {
       if (!r.isEffectiveAt(params.atDate)) return false;
       if (params.ruleId && r.id !== params.ruleId) return false;
+
+      // Filter out reference sample rules from silent default selection
+      if (!params.ruleId && !params.includeReferenceSamples && r.isReferenceSample) {
+        return false;
+      }
 
       if (params.tenantId) {
         return r.tenantId === params.tenantId || r.tenantId === undefined;
@@ -55,8 +61,12 @@ export class InMemoryPricingRuleRepository implements PricingRuleRepositoryPort 
     return matching[0] ?? null;
   }
 
-  async listByTenant(tenantId?: TenantId): Promise<PricingRule[]> {
+  async listByTenant(
+    tenantId?: TenantId,
+    includeReferenceSamples: boolean = false
+  ): Promise<PricingRule[]> {
     return Array.from(this.rules.values()).filter((r) => {
+      if (!includeReferenceSamples && r.isReferenceSample) return false;
       if (tenantId) {
         return r.tenantId === tenantId || r.tenantId === undefined;
       }

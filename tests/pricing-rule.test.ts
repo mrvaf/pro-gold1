@@ -119,4 +119,25 @@ describe('PricingRule Entity & Rule Configuration', () => {
     expect(rule.isSystemRule()).toBe(false);
     expect(rule.tenantId).toBe(tenantId);
   });
+
+  it('supports explicit specification source and reference sample tagging', () => {
+    const rule = PricingRule.create({
+      name: 'Sample Model',
+      isReferenceSample: true,
+      specificationSource: 'NON_AUTHORITATIVE_TEST_FIXTURE',
+      config: {
+        makingCharge: { type: 'ZERO', rate: '0' },
+        margin: { type: 'ZERO', rate: '0' },
+        tax: { taxableBase: 'EXEMPT', rate: '0' },
+        roundingMode: 'HALF_UP',
+      },
+    }).unwrap();
+
+    expect(rule.isReferenceSample).toBe(true);
+    expect(rule.specificationSource).toBe('NON_AUTHORITATIVE_TEST_FIXTURE');
+
+    const dto = rule.toDto();
+    expect(dto.isReferenceSample).toBe(true);
+    expect(dto.specificationSource).toBe('NON_AUTHORITATIVE_TEST_FIXTURE');
+  });
 });

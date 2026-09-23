@@ -18,6 +18,8 @@ describe('Pricing Engine Database Schema', () => {
     expect(pricingRulesTable.taxRate).toBeDefined();
     expect(pricingRulesTable.roundingMode).toBeDefined();
     expect(pricingRulesTable.roundingScale).toBeDefined();
+    expect(pricingRulesTable.isReferenceSample).toBeDefined();
+    expect(pricingRulesTable.specificationSource).toBeDefined();
     expect(pricingRulesTable.createdAt).toBeDefined();
   });
 
@@ -41,6 +43,7 @@ describe('Pricing Engine Database Schema', () => {
     expect(pricingResultsTable.purityFineness).toBeDefined();
     expect(pricingResultsTable.breakdownJson).toBeDefined();
     expect(pricingResultsTable.inputsJson).toBeDefined();
+    expect(pricingResultsTable.ruleReferenceJson).toBeDefined();
     expect(pricingResultsTable.calculatedAt).toBeDefined();
   });
 });

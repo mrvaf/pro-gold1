@@ -43,6 +43,8 @@ export const toDomainPricingRule = (record: PricingRuleRecord): PricingRule => {
       roundingMode: record.roundingMode as RoundingModeKey,
       roundingScale: record.roundingScale ?? undefined,
     },
+    isReferenceSample: record.isReferenceSample ?? false,
+    specificationSource: record.specificationSource ?? undefined,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt ?? undefined,
   });
@@ -70,6 +72,8 @@ export const toDatabasePricingRule = (rule: PricingRule): InsertPricingRuleRecor
   taxRate: rule.config.tax.rate,
   roundingMode: rule.config.roundingMode,
   roundingScale: rule.config.roundingScale ?? null,
+  isReferenceSample: rule.isReferenceSample,
+  specificationSource: rule.specificationSource ?? null,
   createdAt: rule.createdAt,
   updatedAt: rule.updatedAt ?? null,
 });
@@ -111,6 +115,7 @@ export class DrizzlePricingRuleRepository implements PricingRuleRepositoryPort {
     atDate: Date;
     tenantId?: TenantId | undefined;
     ruleId?: PricingRuleId | undefined;
+    includeReferenceSamples?: boolean | undefined;
   }): Promise<PricingRule | null> {
     const conditions = [
       lte(pricingRulesTable.effectiveFrom, params.atDate),
@@ -119,6 +124,11 @@ export class DrizzlePricingRuleRepository implements PricingRuleRepositoryPort {
         gte(pricingRulesTable.effectiveTo, params.atDate)
       )!,
     ];
+
+    // Unless explicitly requested, reference sample rules are NEVER selected as silent defaults
+    if (!params.includeReferenceSamples && !params.ruleId) {
+      conditions.push(eq(pricingRulesTable.isReferenceSample, false));
+    }
 
     if (params.ruleId) {
       conditions.push(eq(pricingRulesTable.id, params.ruleId));
@@ -146,15 +156,28 @@ export class DrizzlePricingRuleRepository implements PricingRuleRepositoryPort {
     return record ? toDomainPricingRule(record) : null;
   }
 
-  async listByTenant(tenantId?: TenantId): Promise<PricingRule[]> {
-    const condition = tenantId
-      ? or(eq(pricingRulesTable.tenantId, tenantId), isNull(pricingRulesTable.tenantId))
-      : isNull(pricingRulesTable.tenantId);
+  async listByTenant(
+    tenantId?: TenantId,
+    includeReferenceSamples: boolean = false
+  ): Promise<PricingRule[]> {
+    const conditions = [];
+
+    if (tenantId) {
+      conditions.push(
+        or(eq(pricingRulesTable.tenantId, tenantId), isNull(pricingRulesTable.tenantId))!
+      );
+    } else {
+      conditions.push(isNull(pricingRulesTable.tenantId));
+    }
+
+    if (!includeReferenceSamples) {
+      conditions.push(eq(pricingRulesTable.isReferenceSample, false));
+    }
 
     const records = await this.db
       .select()
       .from(pricingRulesTable)
-      .where(condition)
+      .where(and(...conditions))
       .orderBy(desc(pricingRulesTable.createdAt));
 
     return records.map(toDomainPricingRule);

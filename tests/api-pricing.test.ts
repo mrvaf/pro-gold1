@@ -34,7 +34,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     return obs;
   };
 
-  it('returns HTTP 200 and detailed breakdown for valid pricing request', async () => {
+  it('returns HTTP 200 and detailed breakdown for valid pricing request with explicit rule', async () => {
     await seedObservation('XAU/USD', '2650.00');
 
     const body = {
@@ -42,6 +42,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
       purity: { karat: '18' },
       targetCurrency: 'USD',
       instrumentSymbol: 'XAU/USD',
+      ruleId: 'rule_iran_bazaar_18k_v1',
     };
 
     const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
@@ -60,6 +61,59 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     expect(json.data.breakdown).toBeDefined();
     expect(json.data.breakdown.lineItems.length).toBeGreaterThan(0);
     expect(json.data.inputs.weightGrams).toBe('10');
+    expect(json.data.ruleReference.ruleId).toBe('rule_iran_bazaar_18k_v1');
+    expect(json.data.ruleReference.effectiveConfig).toBeDefined();
+  });
+
+  it('returns HTTP 422 EXPLICIT_RULE_REQUIRED when ruleId is omitted and no tenant rule is configured', async () => {
+    await seedObservation('XAU/USD', '2650.00');
+
+    const body = {
+      weight: { grams: '10.0' },
+      purity: { karat: '18' },
+      targetCurrency: 'USD',
+      instrumentSymbol: 'XAU/USD',
+      // ruleId explicitly omitted
+    };
+
+    const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+
+    const json = await res.json();
+    expect(json.success).toBe(false);
+    expect(json.error.code).toBe('EXPLICIT_RULE_REQUIRED');
+  });
+
+  it('rejects gemstone carats as gold body mass with explicit error', async () => {
+    await seedObservation('XAU/USD', '2650.00');
+
+    const body = {
+      weight: { carats: '5.0' }, // Gemstone carats passed as gold weight!
+      purity: { karat: '18' },
+      targetCurrency: 'USD',
+      instrumentSymbol: 'XAU/USD',
+      ruleId: 'rule_iran_bazaar_18k_v1',
+    };
+
+    const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+
+    const json = await res.json();
+    expect(json.success).toBe(false);
+    expect(json.error.code).toBe('INVALID_WEIGHT');
+    expect(json.error.message).toContain('Carats (ct) are reserved exclusively for gemstone mass');
   });
 
   it('returns HTTP 400 when request body fails Zod validation', async () => {
@@ -83,13 +137,14 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     expect(json.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('returns HTTP 503 / 422 when market data is unavailable', async () => {
+  it('returns HTTP 503 when market data is unavailable', async () => {
     // Unknown instrument symbol
     const body = {
       weight: { grams: '5.0' },
       purity: { fineness: '750' },
       targetCurrency: 'USD',
       instrumentSymbol: 'NON_EXISTENT/USD',
+      ruleId: 'rule_iran_bazaar_18k_v1',
     };
 
     const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
@@ -116,6 +171,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
       purity: { karat: '18' },
       targetCurrency: 'EUR',
       instrumentSymbol: 'XAU/EUR',
+      ruleId: 'rule_iran_bazaar_18k_v1',
       allowStaleMarketData: false,
     };
 

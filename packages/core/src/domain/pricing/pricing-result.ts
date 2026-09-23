@@ -6,6 +6,7 @@ import type { TenantId } from '../tenant/tenant.js';
 import type { StoreId } from '../tenant/store.js';
 import type { MarketDataStatus } from '../market-data/market-data-types.js';
 import type { RoundingModeKey } from '../finance/rounding-policy.js';
+import type { PricingRuleConfig } from './pricing-types.js';
 import { PricingBreakdown, type PricingBreakdownDto } from './pricing-breakdown.js';
 
 export type PricingResultId = EntityId<'PricingResult'>;
@@ -36,6 +37,13 @@ export interface RuleReferenceSnapshot {
   readonly ruleId: string;
   readonly ruleName: string;
   readonly ruleVersion: string;
+  readonly isReferenceSample: boolean;
+  readonly specificationSource?: string | undefined;
+  /**
+   * Immutable snapshot of the exact effective rule parameters used for this calculation.
+   * Ensures historical reproducibility even if the rule entity is later modified or deleted.
+   */
+  readonly effectiveConfig: PricingRuleConfig;
 }
 
 export interface RoundingSnapshot {
@@ -44,7 +52,7 @@ export interface RoundingSnapshot {
 }
 
 export interface CreatePricingResultProps {
-  id?: string;
+  id?: string | undefined;
   tenantId?: TenantId | undefined;
   storeId?: StoreId | undefined;
   finalPrice: Money;
@@ -56,7 +64,7 @@ export interface CreatePricingResultProps {
   rounding: RoundingSnapshot;
   calculatedAt: Date;
   isStaleMarketData: boolean;
-  createdAt?: Date;
+  createdAt?: Date | undefined;
 }
 
 export interface PricingResultDto {
@@ -83,7 +91,29 @@ export interface PricingResultDto {
       rate: string;
     } | undefined;
   };
-  ruleReference: RuleReferenceSnapshot;
+  ruleReference: {
+    ruleId: string;
+    ruleName: string;
+    ruleVersion: string;
+    isReferenceSample: boolean;
+    specificationSource?: string | undefined;
+    effectiveConfig: {
+      makingCharge: {
+        type: string;
+        rate: string;
+      };
+      margin: {
+        type: string;
+        rate: string;
+      };
+      tax: {
+        taxableBase: string;
+        rate: string;
+      };
+      roundingMode: string;
+      roundingScale?: number | undefined;
+    };
+  };
   rounding: RoundingSnapshot;
   calculatedAt: string;
   isStaleMarketData: boolean;
@@ -118,7 +148,7 @@ export class PricingResult extends Entity<PricingResultId> {
       rounding: RoundingSnapshot;
       calculatedAt: Date;
       isStaleMarketData: boolean;
-      createdAt?: Date;
+      createdAt?: Date | undefined;
     }
   ) {
     super(id);
@@ -205,7 +235,29 @@ export class PricingResult extends Entity<PricingResultId> {
         freshnessStatus: this._marketReference.freshnessStatus,
         appliedFxRate: this._marketReference.appliedFxRate,
       },
-      ruleReference: this._ruleReference,
+      ruleReference: {
+        ruleId: this._ruleReference.ruleId,
+        ruleName: this._ruleReference.ruleName,
+        ruleVersion: this._ruleReference.ruleVersion,
+        isReferenceSample: this._ruleReference.isReferenceSample,
+        specificationSource: this._ruleReference.specificationSource,
+        effectiveConfig: {
+          makingCharge: {
+            type: this._ruleReference.effectiveConfig.makingCharge.type,
+            rate: this._ruleReference.effectiveConfig.makingCharge.rate,
+          },
+          margin: {
+            type: this._ruleReference.effectiveConfig.margin.type,
+            rate: this._ruleReference.effectiveConfig.margin.rate,
+          },
+          tax: {
+            taxableBase: this._ruleReference.effectiveConfig.tax.taxableBase,
+            rate: this._ruleReference.effectiveConfig.tax.rate,
+          },
+          roundingMode: this._ruleReference.effectiveConfig.roundingMode,
+          roundingScale: this._ruleReference.effectiveConfig.roundingScale,
+        },
+      },
       rounding: this._rounding,
       calculatedAt: this._calculatedAt.toISOString(),
       isStaleMarketData: this._isStaleMarketData,

@@ -52,6 +52,14 @@ export class PricingError extends DomainError {
     );
   }
 
+  static explicitRuleRequired(): PricingError {
+    return new PricingError(
+      'EXPLICIT_RULE_REQUIRED',
+      'No explicit ruleId provided and no authoritative tenant pricing rule configured. An explicit rule is required to avoid hidden commercial assumptions.',
+      422
+    );
+  }
+
   static ruleExpired(ruleId: string, effectiveTo: Date): PricingError {
     return new PricingError(
       'RULE_EXPIRED',

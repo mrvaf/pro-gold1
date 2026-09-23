@@ -19,6 +19,8 @@ export interface CreatePricingRuleProps {
   effectiveFrom?: Date | undefined;
   effectiveTo?: Date | undefined;
   config: PricingRuleConfig;
+  isReferenceSample?: boolean | undefined;
+  specificationSource?: string | undefined;
   createdAt?: Date | undefined;
   updatedAt?: Date | undefined;
 }
@@ -47,6 +49,8 @@ export interface PricingRuleDto {
     roundingMode: string;
     roundingScale?: number | undefined;
   };
+  isReferenceSample: boolean;
+  specificationSource?: string | undefined;
   createdAt: string;
 }
 
@@ -58,6 +62,8 @@ export class PricingRule extends Entity<PricingRuleId> {
   private readonly _effectiveFrom: Date;
   private readonly _effectiveTo?: Date | undefined;
   private readonly _config: PricingRuleConfig;
+  private readonly _isReferenceSample: boolean;
+  private readonly _specificationSource?: string | undefined;
   private readonly _createdAt: Date;
   private readonly _updatedAt?: Date | undefined;
 
@@ -67,6 +73,8 @@ export class PricingRule extends Entity<PricingRuleId> {
     version: string,
     effectiveFrom: Date,
     config: PricingRuleConfig,
+    isReferenceSample: boolean,
+    specificationSource: string | undefined,
     createdAt: Date,
     tenantId?: TenantId | undefined,
     storeId?: StoreId | undefined,
@@ -78,6 +86,8 @@ export class PricingRule extends Entity<PricingRuleId> {
     this._version = version;
     this._effectiveFrom = effectiveFrom;
     this._config = config;
+    this._isReferenceSample = isReferenceSample;
+    this._specificationSource = specificationSource;
     this._createdAt = createdAt;
     this._tenantId = tenantId;
     this._storeId = storeId;
@@ -111,6 +121,14 @@ export class PricingRule extends Entity<PricingRuleId> {
 
   get config(): PricingRuleConfig {
     return this._config;
+  }
+
+  get isReferenceSample(): boolean {
+    return this._isReferenceSample;
+  }
+
+  get specificationSource(): string | undefined {
+    return this._specificationSource;
   }
 
   get createdAt(): Date {
@@ -208,6 +226,8 @@ export class PricingRule extends Entity<PricingRuleId> {
         version,
         effectiveFrom,
         params.config,
+        params.isReferenceSample ?? false,
+        params.specificationSource?.trim() || undefined,
         params.createdAt ?? new Date(),
         params.tenantId,
         params.storeId,
@@ -242,6 +262,8 @@ export class PricingRule extends Entity<PricingRuleId> {
         roundingMode: this._config.roundingMode,
         roundingScale: this._config.roundingScale,
       },
+      isReferenceSample: this._isReferenceSample,
+      specificationSource: this._specificationSource,
       createdAt: this._createdAt.toISOString(),
     };
   }

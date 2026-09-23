@@ -17,15 +17,17 @@ import {
   type TenantId,
   type StoreId,
   createEntityId,
+  WEIGHT_CONVERSION_CONSTANTS,
 } from '@v-gold/core';
 import { err, ok, type Result } from '@v-gold/core';
+import { Decimal } from 'decimal.js';
 
 export interface CalculateQuoteInput {
   weightInput: {
     grams?: string | undefined;
     troyOunces?: string | undefined;
     mesghal?: string | undefined;
-    carats?: string | undefined;
+    carats?: string | undefined; // Rejected with explicit error to prevent carat-to-gold confusion
   };
   purityInput: {
     fineness?: string | undefined;
@@ -57,7 +59,16 @@ export class PricingService {
     const tenantId = input.tenantId ? createEntityId<TenantId>(input.tenantId) : undefined;
     const storeId = input.storeId ? createEntityId<StoreId>(input.storeId) : undefined;
 
-    // 1. Parse and Validate Weight
+    // 1. Parse and Validate Weight (Carats strictly rejected for gold body mass)
+    if (input.weightInput.carats !== undefined) {
+      return err(
+        new PricingError(
+          'INVALID_WEIGHT',
+          'Carats (ct) are reserved exclusively for gemstone mass and cannot be used for precious metal bulk weight. Please specify gold weight in grams, mesghal, or troyOunces.'
+        )
+      );
+    }
+
     let weight: Weight;
     if (input.weightInput.grams !== undefined) {
       const res = Weight.fromGrams(input.weightInput.grams);
@@ -66,9 +77,7 @@ export class PricingService {
     } else if (input.weightInput.troyOunces !== undefined) {
       const rawOz = input.weightInput.troyOunces;
       const res = Weight.fromGrams(
-        new (await import('decimal.js')).Decimal(rawOz).times(
-          (await import('@v-gold/core')).WEIGHT_CONVERSION_CONSTANTS.GRAMS_PER_TROY_OUNCE
-        )
+        new Decimal(rawOz).times(WEIGHT_CONVERSION_CONSTANTS.GRAMS_PER_TROY_OUNCE)
       );
       if (res.isErr) return err(new PricingError('INVALID_WEIGHT', res.error.message));
       weight = res.value;
@@ -76,12 +85,13 @@ export class PricingService {
       const res = Weight.fromMesghal(input.weightInput.mesghal);
       if (res.isErr) return err(new PricingError('INVALID_WEIGHT', res.error.message));
       weight = res.value;
-    } else if (input.weightInput.carats !== undefined) {
-      const res = Weight.fromCarats(input.weightInput.carats);
-      if (res.isErr) return err(new PricingError('INVALID_WEIGHT', res.error.message));
-      weight = res.value;
     } else {
-      return err(new PricingError('INVALID_WEIGHT', 'No weight value provided (grams, mesghal, carats, or troyOunces required).'));
+      return err(
+        new PricingError(
+          'INVALID_WEIGHT',
+          'No precious metal weight provided. Gold mass must be specified in grams, mesghal, or troyOunces.'
+        )
+      );
     }
 
     if (weight.isZero()) {
@@ -119,7 +129,7 @@ export class PricingService {
       return err(PricingError.marketDataUnavailable(input.instrumentSymbol));
     }
 
-    // 4. Resolve Pricing Rule
+    // 4. Resolve Pricing Rule (Strict: No Silent Commercial Defaults)
     let rule: PricingRule | null;
     if (input.ruleId) {
       rule = await this.ruleRepo.findById(createEntityId<PricingRuleId>(input.ruleId), tenantId);
@@ -127,12 +137,15 @@ export class PricingService {
         return err(PricingError.ruleNotFound(input.ruleId));
       }
     } else {
+      // Find active authoritative rule for tenant (excludes reference samples)
       rule = await this.ruleRepo.findEffective({
         atDate: evaluationDate,
         tenantId,
+        includeReferenceSamples: false,
       });
+
       if (!rule) {
-        return err(new PricingError('RULE_NOT_FOUND', 'No active pricing rule found for tenant/platform.'));
+        return err(PricingError.explicitRuleRequired());
       }
     }
 
@@ -151,7 +164,7 @@ export class PricingService {
       }
     }
 
-    // 6. Optional Stone Value
+    // 6. Optional Stone Value (Passthrough aggregation only; no fake valuation)
     let stoneValue = undefined;
     if (input.stoneValue !== undefined && input.stoneValue.trim() !== '') {
       const stoneRes = Money.create(input.stoneValue, input.targetCurrency);

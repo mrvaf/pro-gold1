@@ -101,6 +101,12 @@ describe('Pricing Persistence Contract & Entity Mappers', () => {
     expect(restored.finalPrice.amount.toString()).toBe(originalResult.finalPrice.amount.toString());
     expect(restored.currency).toBe(originalResult.currency);
     expect(restored.ruleReference.ruleName).toBe(originalResult.ruleReference.ruleName);
+    expect(restored.ruleReference.effectiveConfig.makingCharge.rate).toBe(
+      originalResult.ruleReference.effectiveConfig.makingCharge.rate
+    );
+    expect(restored.ruleReference.effectiveConfig.margin.rate).toBe(
+      originalResult.ruleReference.effectiveConfig.margin.rate
+    );
     expect(restored.breakdown.verifyLineItemInvariant()).toBe(true);
     expect(restored.breakdown.finalAmount.amount.toString()).toBe(
       originalResult.breakdown.finalAmount.amount.toString()

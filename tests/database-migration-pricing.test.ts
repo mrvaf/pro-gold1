@@ -29,4 +29,19 @@ describe('Pricing Engine Database Migration (0005_authoritative_pricing_engine.s
     expect(sql).toContain('pricing_rules_tenant_effective_idx');
     expect(sql).toContain('pricing_results_tenant_calc_idx');
   });
+
+  it('ensures migration 0006 exists and adds audit metadata columns immutably', () => {
+    const migration0006Path = path.resolve(
+      __dirname,
+      '../packages/database/src/migrations/0006_pricing_rule_audit_metadata.sql'
+    );
+    expect(fs.existsSync(migration0006Path)).toBe(true);
+    const sql = fs.readFileSync(migration0006Path, 'utf-8');
+
+    expect(sql).toContain('ALTER TABLE "pricing_rules"');
+    expect(sql).toContain('is_reference_sample');
+    expect(sql).toContain('specification_source');
+    expect(sql).toContain('ALTER TABLE "pricing_results"');
+    expect(sql).toContain('rule_reference_json');
+  });
 });
