@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.0.1-prealpha`
-* **Current Stage:** **Stage 0 — Discovery & Foundational Architecture**
+* **Project Version:** `0.1.0`
+* **Current Stage:** **Stage 1 — Architecture & Monorepo Foundation**
 * **Stage Status:** **COMPLETE**
 * **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_00_COMPLETE`
-* **Next Target Stage:** **Stage 1 — Architecture & Monorepo Foundation**
+* **Last Verified Snapshot:** `V-GOLD_STAGE_01_COMPLETE`
+* **Next Target Stage:** **Stage 2 — Domain Models & Database Foundations**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -19,8 +19,8 @@
 | Stage | Name | Status | Verified Tests | Typecheck | Build | Notes |
 | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
 | **0** | **Discovery & Foundational Architecture** | **COMPLETE** | N/A (Audit & Docs) | PASS | PASS | Baseline established; ADRs defined |
-| 1 | Architecture & Monorepo Foundation | PENDING | — | — | — | Awaiting user command |
-| 2 | Domain + Database | PENDING | — | — | — | |
+| **1** | **Architecture & Monorepo Foundation** | **COMPLETE** | **16 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | npm workspaces, @v-gold/core, @v-gold/database, @v-gold/ai-gateway, apps/web, Vitest |
+| 2 | Domain Models & Database Foundations | PENDING | — | — | — | Awaiting user command |
 | 3 | IAM & Multi-Tenancy | PENDING | — | — | — | |
 | 4 | Market Data Infrastructure | PENDING | — | — | — | |
 | 4.1| Precision & Currency Semantics | PENDING | — | — | — | |
@@ -49,26 +49,83 @@
 
 ---
 
-## Stage 0 Completion Gate Audit
+## Stage 1 Completion Gate Audit
 
-| Gate Item | Target Standard | Current Value | Result |
+| Gate Item | Target Standard | Measured Result | Status |
 | :--- | :--- | :--- | :---: |
-| **Workspace Audit** | Clean room verified; no foreign artifacts | Clean workspace | **PASS** |
-| **Product Discovery** | Requirements & functional pillars mapped | Fully documented in ROADMAP.md | **PASS** |
-| **Architectural Decisions** | Layer boundaries, ADRs, financial formulas | Documented in ARCHITECTURE.md | **PASS** |
-| **Documentation Standards** | README, ARCHITECTURE, STATE, ROADMAP | All 4 core documents generated | **PASS** |
-| **Test Strategy** | Pyramid, isolation, and tooling planned | Outlined in ARCHITECTURE.md | **PASS** |
-| **Stage Isolation** | Zero implementation of subsequent stages | Only Stage 0 completed | **PASS** |
+| **Monorepo Structure** | `apps/web`, `packages/core`, `packages/database`, `packages/ai-gateway` | Present, configured via npm workspaces | **PASS** |
+| **Boundary Isolation** | `@v-gold/core` independent from React, Next, DB, AI SDKs | Verified via AST scan in `tests/architecture.test.ts` | **PASS** |
+| **AI Gateway Port** | Abstraction with truthful 503 fallback and mock adapter | Verified in `tests/foundation-boundaries.test.ts` | **PASS** |
+| **Tenant Isolation Port**| Scoped repository enforcing `storeId` boundaries | Verified in `tests/foundation-boundaries.test.ts` | **PASS** |
+| **Web Entrypoint** | Next.js 15 App Router + React 19 + `/api/health` handler | Verified in `tests/web-entrypoint.test.ts` | **PASS** |
+| **Test Suite** | Vitest suite executes reliably | **16 passed / 0 skipped / 0 failed** | **PASS** |
+| **Typecheck** | TypeScript 5.7+ strict check across all workspaces & tests | **0 errors** | **PASS** |
+| **Production Build** | `npm run build` compiles packages and Next.js app | **Clean build** | **PASS** |
+| **Stage Confinement** | Zero implementation of Stage 2+ features | Strictly foundation only | **PASS** |
 
 ---
 
-## File System Inventory (Stage 0)
+## File System Inventory (Stage 1 Implemented)
 
-* `.gitignore` — Version control exclusion patterns
-* `README.md` — Project introduction, stack, operational rules
-* `ARCHITECTURE.md` — Hexagonal architecture, ADRs, pricing formulas, domain rules
-* `PROJECT_STATE.md` — Current execution audit and gate tracking
-* `ROADMAP.md` — Comprehensive 26-stage execution plan and milestones
+```text
+├── package.json
+├── package-lock.json
+├── tsconfig.base.json
+├── vitest.config.ts
+├── .gitignore
+├── README.md
+├── ARCHITECTURE.md
+├── PROJECT_STATE.md
+├── ROADMAP.md
+├── apps/
+│   └── web/
+│       ├── package.json
+│       ├── tsconfig.json
+│       ├── next.config.ts
+│       └── app/
+│           ├── layout.tsx
+│           ├── page.tsx
+│           └── api/health/route.ts
+├── packages/
+│   ├── core/
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── tsconfig.build.json
+│   │   └── src/
+│   │       ├── index.ts
+│   │       ├── common/
+│   │       │   ├── result.ts
+│   │       │   ├── id.ts
+│   │       │   ├── entity.ts
+│   │       │   ├── value-object.ts
+│   │       │   └── errors.ts
+│   │       └── ports/
+│   │           ├── repository.port.ts
+│   │           └── ai-gateway.port.ts
+│   ├── database/
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── tsconfig.build.json
+│   │   └── src/
+│   │       ├── index.ts
+│   │       ├── config.ts
+│   │       └── in-memory-store.ts
+│   └── ai-gateway/
+│       ├── package.json
+│       ├── tsconfig.json
+│       ├── tsconfig.build.json
+│       └── src/
+│           ├── index.ts
+│           ├── client.ts
+│           └── adapters/
+│               ├── mock-adapter.ts
+│               └── unavailable-adapter.ts
+└── tests/
+    ├── tsconfig.json
+    ├── architecture.test.ts
+    ├── foundation-boundaries.test.ts
+    └── web-entrypoint.test.ts
+```
 
 ---
 
@@ -78,5 +135,5 @@
 * [x] No client-side authoritative pricing permitted.
 * [x] No secrets committed to source.
 * [x] No fake features or stubbed production claims.
-* [x] Exactly ONE stage completed (Stage 0).
-* [x] Engine stopped awaiting user authorization for Stage 1.
+* [x] Exactly Stage 1 completed.
+* [x] Engine stopped awaiting user authorization for Stage 2.

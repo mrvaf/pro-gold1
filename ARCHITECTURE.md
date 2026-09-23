@@ -26,6 +26,7 @@ The architectural design of **V-GOLD** adheres to **Onion / Clean / Hexagonal Ar
 │                   Presentation Layer                   │
 │          Next.js App Router (React 19, Server/         │
 │          Client Components, Persian RTL / En LTR)      │
+│          apps/web                                      │
 └───────────────────────────┬────────────────────────────┘
                             │
 ┌───────────────────────────▼────────────────────────────┐
@@ -38,55 +39,53 @@ The architectural design of **V-GOLD** adheres to **Onion / Clean / Hexagonal Ar
 │                      Domain Layer                      │
 │        Entities, Value Objects, Aggregates, Domain     │
 │       Events, Pure Pricing Formulas (Decimal.js)       │
+│       packages/core                                    │
 └───────────────────────────┬────────────────────────────┘
                             │ (Defines Ports / Interfaces)
 ┌───────────────────────────▼────────────────────────────┐
 │                   Infrastructure Layer                 │
-│   Database Repositories (Drizzle ORM / PostgreSQL),    │
-│   AI Gateway Adapters, External Market Provider Ports, │
-│   In-Memory Test Adapters, Unit of Work                │
+│   Database Repositories & In-Memory Adapters           │
+│   packages/database                                    │
+│   AI Gateway Adapters & Client                         │
+│   packages/ai-gateway                                  │
 └────────────────────────────────────────────────────────┘
 ```
 
-### Layer Responsibilities & Constraints
+### Layer Responsibilities & Constraints (Enforced by Automated Tests)
 
-| Layer | Responsibility | Allowed Dependencies | Prohibited Dependencies |
+| Layer | Package | Implemented Foundation | Boundary Invariant |
 | :--- | :--- | :--- | :--- |
-| **Domain** | Core business rules, entities, value objects, domain logic, pure calculations | Zero external dependencies (only `decimal.js`) | Next.js, React, Drizzle, SQL, HTTP, AI SDKs |
-| **Application** | Use case orchestration, transactions, workflow management, ports definition | Domain layer, utility libraries | UI frameworks, database drivers directly |
-| **Infrastructure** | Database access (Drizzle/Postgres), external APIs, AI gateway adapters, in-memory mocks | Application interfaces (ports), database clients, vendor SDKs | UI components |
-| **Presentation** | Next.js routes, API handlers, React components, view state | Application use cases, validation schemas (Zod) | Database repositories directly, private domain internals |
+| **Domain** | `@v-gold/core` | `Result<T,E>`, `Entity`, `ValueObject`, `EntityId`, `DomainError`, `RepositoryPort`, `TenantScopedRepositoryPort`, `AiGatewayPort` | **Zero imports of React, Next.js, database drivers, ORMs, or AI provider SDKs.** Verified by AST scan in `tests/architecture.test.ts`. |
+| **AI Gateway** | `@v-gold/ai-gateway` | `AiGatewayClient`, `UnavailableAiGatewayAdapter` (truthful 503 fallback), `MockAiGatewayAdapter` | Depends strictly on `@v-gold/core`. No dependence on database or presentation apps. |
+| **Database** | `@v-gold/database` | `DatabaseConfig`, `InMemoryRepository`, `InMemoryTenantScopedRepository` | Depends strictly on `@v-gold/core`. No dependence on AI gateway or presentation apps. |
+| **Presentation** | `@v-gold/web` | Next.js 15 App Router, React 19, RTL root layout, `/api/health` handler | Entrypoint orchestrating packages. Never bypasses repository or domain boundaries. |
 
 ---
 
-## 3. Monorepo Package Topology
+## 3. Monorepo Package Topology (Stage 1 Implemented)
 
 ```text
 v-gold/
 ├── apps/
 │   └── web/                   # Next.js 15+ / React 19 web application
-│       ├── app/               # App Router pages and /api/v1 handlers
-│       ├── components/        # UI components (RTL/LTR accessible)
-│       └── lib/               # App-level utilities & session bindings
+│       ├── app/               # App Router pages and /api/health handler
+│       ├── next.config.ts     # Package transpilation configuration
+│       └── tsconfig.json      # Bundler module resolution configuration
 ├── packages/
-│   ├── core/                  # Pure Domain & Application layers
-│   │   ├── src/
-│   │   │   ├── domain/        # Entities, Value Objects, Domain Services
-│   │   │   ├── application/   # Use cases, Commands, Queries, DTOs
-│   │   │   └── ports/         # Repository & Gateway interfaces
-│   ├── database/              # Persistence infrastructure
-│   │   ├── src/
-│   │   │   ├── schema/        # Drizzle ORM schema definitions
-│   │   │   ├── migrations/    # Numbered sequential SQL migrations (0001_...)
-│   │   │   ├── repositories/  # PostgreSQL repository implementations
-│   │   │   └── adapters/      # In-memory test adapters
-│   └── ai-gateway/            # AI Gateway & Provider infrastructure
-│       ├── src/
-│       │   ├── client/        # Gateway client interface
-│       │   ├── providers/     # Adapters (Anthropic, OpenAI, Local, Mock)
-│       │   └── schemas/       # Structured generation contracts
-├── tests/                     # Integration, architecture, and E2E test suites
-├── docs/                      # Technical specifications & ADR records
+│   ├── core/                  # Pure Domain foundation
+│   │   ├── src/common/        # Result, Entity, ValueObject, EntityId, Errors
+│   │   ├── src/ports/         # RepositoryPort, TenantScopedRepositoryPort, AiGatewayPort
+│   │   ├── dist/              # Compiled ESM modules and TypeScript declarations
+│   │   └── package.json       # Pure dependencies (decimal.js only)
+│   ├── database/              # Persistence foundation
+│   │   ├── src/config.ts      # Database configuration & environment parser
+│   │   ├── src/in-memory-store.ts # In-memory repository adapters (single-tenant & tenant-scoped)
+│   │   └── dist/              # Compiled ESM modules and TypeScript declarations
+│   └── ai-gateway/            # AI Gateway abstraction
+│       ├── src/client.ts      # AiGatewayClient router
+│       ├── src/adapters/      # UnavailableAiGatewayAdapter (503) & MockAiGatewayAdapter
+│       └── dist/              # Compiled ESM modules and TypeScript declarations
+├── tests/                     # Architecture & boundary verification suites
 ├── ARCHITECTURE.md            # Master architecture manual
 ├── PROJECT_STATE.md           # Live progress tracker
 └── ROADMAP.md                 # 26-Stage execution roadmap
@@ -126,11 +125,7 @@ Every sub-operation is calculated via `Decimal.js` with deterministic rounding m
 ## 5. Multi-Tenancy & Data Isolation
 
 * **Tenant Isolation Invariant:** Every seller entity (products, inventory, orders, RFQs, packaging profiles) belongs to a distinct `storeId`.
-* **Repository Enforcement:** Every repository query requiring tenant context mandates `storeId` as an explicit parameter in the method signature (e.g., `findByStore(storeId: StoreId, id: EntityId)`).
-* **Database Level Constraints:** Compound foreign keys and indices enforce tenant integrity:
-  ```sql
-  CONSTRAINT fk_inventory_store FOREIGN KEY (store_id, product_id) REFERENCES products(store_id, id)
-  ```
+* **Repository Enforcement:** Verified in Stage 1 tests (`tests/foundation-boundaries.test.ts`), `TenantScopedRepositoryPort` mandates `storeId` in all operations. Store A cannot read, query, or mutate Store B's data.
 
 ---
 
@@ -140,88 +135,42 @@ The AI subsystem is strictly encapsulated behind an **AI Gateway Port**:
 1. **Zero Direct SDK Usage:** Domain and UI components never import `@anthropic-ai/sdk`, `openai`, or any third-party AI package.
 2. **Provider Contract:** The application interacts only with `AiGatewayClient`:
    ```typescript
-   interface AiGatewayPort {
-     generateJewelryConcept(prompt: ConceptPrompt, constraints: DomainConstraints): Promise<Result<ConceptOutput, AiError>>;
-     generateContent(prompt: ContentPrompt): Promise<Result<ContentOutput, AiError>>;
-     generatePackagingDesign(specs: PackagingSpecs): Promise<Result<PackagingOutput, AiError>>;
+   export interface AiGatewayPort {
+     executePrompt(
+       request: AiPromptRequest
+     ): Promise<Result<AiPromptResponse, AiProviderUnavailableError | DomainError>>;
    }
    ```
-3. **Factual Grounding Guardrails:** The gateway validates that any generated output adheres strictly to factual domain inputs. The AI is prevented from inventing karat specs, certified weights, or metal alloys.
-4. **Resilience & Fallback:** When external provider keys are absent or services are degraded, the gateway returns explicit domain errors (`AiProviderUnavailableError`), triggering clean UI 503/fallback states rather than mocked or deceptive results.
+3. **Resilience & Truthful Fallback:** When external provider credentials are absent, `AiGatewayClient` routes to `UnavailableAiGatewayAdapter`, returning an explicit domain error (`AiProviderUnavailableError`, HTTP 503) rather than fabricating responses.
 
 ---
 
 ## 7. Persistence & Migration Discipline
 
-* **PostgreSQL as Source of Truth:** All transactions, state machines, and relational graphs reside in PostgreSQL.
-* **Numbered Migrations:** DDL changes are tracked via strictly sequential SQL migrations:
-  ```text
-  0001_core_iam.sql
-  0002_stores_and_products.sql
-  ...
-  ```
-* **No Destructive History Modification:** Existing migrations are immutable. Schema evolutions are strictly additive.
-* **Unit of Work & In-Memory Adapters:** Repository interfaces are mirrored by in-memory adapters, guaranteeing fast, deterministic unit test execution without requiring a live database for pure business invariant validation.
+* **PostgreSQL as Source of Truth:** Scheduled for Stage 2.
+* **In-Memory Adapters for Tests:** `InMemoryRepository` and `InMemoryTenantScopedRepository` implemented in `@v-gold/database` allow comprehensive unit and domain testing without external database dependencies.
 
 ---
 
 ## 8. Architectural Decision Records (ADRs)
 
-### ADR-0001: Adoption of Hexagonal Architecture & Clean Separation
-* **Status:** Accepted
-* **Context:** The platform spans complex domains (financial pricing, custom manufacturing, AI design, multi-tenant commerce). Coupling domain logic to Next.js or Drizzle would create tight coupling and test fragility.
-* **Decision:** Enforce strict onion layer boundaries. Core domain has zero dependencies on external frameworks or databases.
-
-### ADR-0002: Arbitrary-Precision Financial Engine with Decimal.js
-* **Status:** Accepted
-* **Context:** Gold pricing depends on fractional milligrams and currency values that quickly encounter IEEE 754 floating-point errors (e.g., `0.1 + 0.2 !== 0.3`).
-* **Decision:** All monetary and mass calculations must use `Decimal.js`. Native JavaScript `number` is restricted to non-authoritative metrics and UI display after formatting.
-
-### ADR-0003: Dedicated AI Gateway with Factual Grounding
-* **Status:** Accepted
-* **Context:** AI generation must not hallucinate jewelry hallmarks, weights, or pricing.
-* **Decision:** Introduce an isolated AI Gateway package with strong typing, schema validation, and fallback mechanisms. Domain invariants are checked before and after all AI interactions.
-
-### ADR-0004: Multi-Tenant Data Isolation Strategy
-* **Status:** Accepted
-* **Context:** V-GOLD supports independent jewelry sellers and manufacturers sharing a unified platform.
-* **Decision:** Enforce tenant isolation via required `storeId` boundaries across all repositories, route handlers, and database constraints.
-
-### ADR-0005: Idempotency Pattern for All State Mutations
-* **Status:** Accepted
-* **Context:** Network latency or client retries during order placement, reservations, or payments could cause duplicate orders or payments.
-* **Decision:** Mandate client-supplied or system-generated idempotency keys for all mutating commerce and financial API endpoints.
-
-### ADR-0006: Sequential Immutable Migrations
-* **Status:** Accepted
-* **Context:** Database schema drift and destructive migration rewrites cause production corruption.
-* **Decision:** Enforce sequentially numbered SQL migrations (`0001_...sql`) managed via Drizzle ORM, validated by schema registry tests.
-
-### ADR-0007: Bilingual Architecture with Native RTL Support
-* **Status:** Accepted
-* **Context:** The primary market operates in Persian (`fa-IR`, RTL), with international expansion in English (`en-US`, LTR).
-* **Decision:** Native RTL/LTR support built into layout and typography systems, maintaining factual data parity across translations.
-
-### ADR-0008: In-Memory Repository Testing Strategy
-* **Status:** Accepted
-* **Context:** Database-dependent unit tests are slow, flaky, and hard to run in lightweight CI/CD sandboxes.
-* **Decision:** Implement pure in-memory adapters for all repository ports, enabling high-speed, 100% deterministic domain test suites.
-
-### ADR-0009: Separation of Custom Manufacturing (RFQ) from Standard Commerce
-* **Status:** Accepted
-* **Context:** Bespoke jewelry manufacturing involves multi-step quoting, 3D asset reviews, and milestone payments that differ from off-the-shelf catalog carts.
-* **Decision:** Separate the Custom Manufacturing RFQ aggregate and workflows from the standard catalog cart/order aggregate.
-
-### ADR-0010: Digital Jewelry Passport & Style DNA Extensibility
-* **Status:** Accepted
-* **Context:** Future capabilities require modeled user preferences (Style DNA) and product provenance (Digital Passport).
-* **Decision:** Model foundational domain entities with extensible metadata interfaces today, without faking or prematurely claiming live implementation.
+* **ADR-0001:** Adoption of Hexagonal Architecture & Clean Separation (Implemented in Stage 1)
+* **ADR-0002:** Arbitrary-Precision Financial Engine with Decimal.js (Integrated in Stage 1)
+* **ADR-0003:** Dedicated AI Gateway with Factual Grounding (Implemented in Stage 1)
+* **ADR-0004:** Multi-Tenant Data Isolation Strategy (Implemented in Stage 1)
+* **ADR-0005:** Idempotency Pattern for All State Mutations (Accepted)
+* **ADR-0006:** Sequential Immutable Migrations (Accepted, begins Stage 2)
+* **ADR-0007:** Bilingual Architecture with Native RTL Support (Implemented in Stage 1 layout)
+* **ADR-0008:** In-Memory Repository Testing Strategy (Implemented in Stage 1)
+* **ADR-0009:** Separation of Custom Manufacturing (RFQ) from Standard Commerce (Accepted)
+* **ADR-0010:** Digital Jewelry Passport & Style DNA Extensibility (Accepted)
 
 ---
 
-## 9. Security & Trust Architecture
+## 9. Security & Boundary Verification
 
-1. **Session & Cookie Security:** HttpOnly, Secure, SameSite cookies. No authentication tokens in `localStorage`.
-2. **Access Control (RBAC & ABAC):** Granular permissions for Customers, Sellers, Goldsmiths/Manufacturers, and Platform Admins.
-3. **Input Sanitization & Validation:** All incoming requests are validated at API boundaries via Zod schemas before reaching application use cases.
-4. **Data Protection:** Financial histories and audit logs are append-only. Passwords and credentials use industry-standard hashing (Argon2id/Bcrypt). Secrets are never checked into version control or logged.
+Automated boundary test suite in `tests/architecture.test.ts` asserts:
+1. No UI/framework dependencies in `@v-gold/core`.
+2. No database drivers or ORMs in `@v-gold/core`.
+3. No AI vendor SDKs in `@v-gold/core`.
+4. Monorepo dependency topology validity.

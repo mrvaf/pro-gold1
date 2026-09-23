@@ -11,7 +11,7 @@
 ### Core Architecture Philosophy
 * **Simple Outside. Sophisticated Inside.** A streamlined, elegant consumer/seller interface backed by a decoupled, strongly typed domain model.
 * **Domain Independence:** The core business domain is completely isolated from HTTP frameworks, UI libraries, database ORMs, and AI provider SDKs.
-* **Strict Financial Precision:** All authoritative monetary and mass calculations strictly utilize `Decimal.js`. JavaScript native floating-point math is strictly forbidden in financial paths.
+* **Strict Financial Precision:** All authoritative monetary and mass calculations strictly utilize `Decimal.js`. JavaScript native floating-point math is strictly prohibited in financial paths.
 * **Truthful Data & Zero Hallucination:** Gold market rates, product specifications, and AI outputs are never invented. If external providers are offline, the system reports explicit fallback/unavailable states.
 * **Strict Multi-Tenancy:** Seller data is rigorously scoped and isolated at the repository and database levels.
 
@@ -30,30 +30,28 @@ No stage begins without an explicit prompt from the user following verification 
 
 ---
 
-## 3. Technology Stack
+## 3. Technology Stack (Stage 1 Implemented)
 
-* **Runtime:** Node.js 20+ (Target: Node.js 22 LTS)
-* **Language:** TypeScript 5.x (Strict mode enabled)
-* **Framework:** Next.js (App Router), React 19
-* **Database & ORM:** PostgreSQL, Drizzle ORM (Pure DDL migrations, strict constraints)
-* **Testing:** Vitest (Unit, Integration, Architecture, Contract)
-* **Validation:** Zod
-* **Financial Precision:** Decimal.js
+* **Runtime:** Node.js 20+ (Target: Node.js 22 LTS compatibility)
+* **Language:** TypeScript 5.7.x (Strict mode enabled)
+* **Framework:** Next.js 15.5.x (App Router), React 19
+* **Monorepo Engine:** npm Workspaces
+* **Testing:** Vitest 3.x (Unit, Integration, Architecture Boundaries)
+* **Financial Precision:** Decimal.js 10.4.x
 * **Internationalization:** Persian (`fa-IR`, RTL default) & English (`en-US`, LTR)
 
 ---
 
-## 4. Repository Structure (Planned Monorepo)
+## 4. Implemented Monorepo Structure
 
 ```text
 ├── apps/
-│   └── web/                   # Next.js App Router frontend & API route handlers
+│   └── web/                   # Next.js 15 App Router frontend & /api/health endpoint
 ├── packages/
-│   ├── core/                  # Pure Domain logic, Entities, Value Objects, Ports, Use Cases
-│   ├── database/              # Drizzle ORM schemas, migrations, PostgreSQL repositories
-│   └── ai-gateway/            # AI Provider abstractions, rate-limiters, mock/real adapters
-├── docs/                      # Architectural decisions, specifications, audit logs
-├── tests/                     # Monorepo integration and end-to-end test suites
+│   ├── core/                  # Pure Domain primitives (Result, Entity, ValueObject, DomainError, Ports)
+│   ├── database/              # DB infrastructure (Config, InMemoryRepository, InMemoryTenantScopedRepository)
+│   └── ai-gateway/            # AI Gateway abstraction (AiGatewayClient, MockAdapter, UnavailableAdapter)
+├── tests/                     # Architecture & boundary tests (Vitest)
 ├── ARCHITECTURE.md            # Comprehensive architecture documentation & ADRs
 ├── PROJECT_STATE.md           # Current execution status & verification gates
 └── ROADMAP.md                 # 26-Stage execution roadmap
@@ -63,24 +61,22 @@ No stage begins without an explicit prompt from the user following verification 
 
 ## 5. Current Status
 
-* **Current Stage:** **Stage 0 (Discovery & Foundational Architecture)**
+* **Current Stage:** **Stage 1 (Architecture & Monorepo Foundation)**
 * **Status:** **COMPLETE**
-* **Next Stage:** **Stage 1 (Architecture & Monorepo Foundation)** — *Awaiting user prompt.*
+* **Next Stage:** **Stage 2 (Domain Models & Database Foundations)** — *Awaiting user prompt.*
 
 ---
 
-## 6. Standard Quality Commands
-
-Once Stage 1 initializes the package toolchain:
+## 6. Verified Quality Commands
 
 ```bash
-# Run test suite
+# Run full Vitest test suite (16 tests passed across 3 test suites)
 npm test
 
-# Run strict type checking
+# Run strict TypeScript typecheck across all workspaces and tests
 npm run typecheck
 
-# Run production build
+# Run production build for all packages and Next.js web application
 npm run build
 ```
 

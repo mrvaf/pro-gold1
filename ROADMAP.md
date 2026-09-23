@@ -14,18 +14,20 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 1 — Architecture & Monorepo Foundation
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:** 
   - Monorepo setup (`apps/web`, `packages/core`, `packages/database`, `packages/ai-gateway`).
-  - Strict TypeScript 5.x configuration across packages.
-  - Vitest test harness and script pipelines (`npm test`, `npm run typecheck`, `npm run build`).
-  - Architecture boundary linting and layer validation.
-* **Completion Criteria:** Zero type errors, test runner operational, packages linked, clean build.
+  - Strict TypeScript 5.7+ configuration across packages.
+  - Vitest 3.x test harness and scripts (`npm test`, `npm run typecheck`, `npm run build`).
+  - Architecture boundary linting and layer validation (AST scan asserting zero leakage into domain).
+  - Domain primitives (`Result<T,E>`, `Entity`, `ValueObject`, `EntityId`, `DomainError`, Ports).
+  - Next.js 15 App Router & React 19 web foundation with bilingual layout and `/api/health` endpoint.
+* **Completion Gate:** 16 passed / 0 skipped / 0 failed, 0 type errors, clean Next.js production build.
 
 ---
 
 ### Stage 2 — Domain Models & Database Foundations
-* **Status:** **PENDING**
+* **Status:** **PENDING** (Awaiting explicit user command)
 * **Focus:**
   - Core domain entities: `User`, `Store`, `Product`, `InventoryItem`.
   - Value objects: `Money` (Decimal.js), `Weight` (Decimal.js), `Purity` (Karat/Fineness).
