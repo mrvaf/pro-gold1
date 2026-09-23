@@ -14,3 +14,6 @@ export * from './product-variants.js';
 export * from './inventory-locations.js';
 export * from './inventory-items.js';
 export * from './inventory-movements.js';
+export * from './seller-profiles.js';
+export * from './seller-listings.js';
+

@@ -110,13 +110,16 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 
 ---
 
-### Stage 7 — Seller Marketplace
-* **Status:** **PENDING**
+### Stage 7 — Seller Marketplace Foundation
+* **Status:** **COMPLETE**
 * **Focus:**
-  - Marketplace product aggregation.
-  - Storefront profiles and seller validation flags.
-  - Seller product listing flows with automated pricing binding.
-* **Completion Criteria:** Marketplace search and filtering tests pass; seller multi-tenancy verified.
+  - SellerProfile identity, finite state machine (`DRAFT`, `ACTIVE`, `SUSPENDED`, `ARCHIVED`), and metadata.
+  - Global normalized SellerSlug validation and public storefront presence.
+  - Decoupled SellerListing domain linking Seller to existing Catalog ProductVariant (zero catalog/pricing duplication).
+  - Cross-tenant catalog ownership invariants and database composite foreign keys.
+  - Cascading seller suspension policy preventing unverified/suspended commercial listings.
+  - Public sanitized discovery endpoints stripped of internal tenant/tax data.
+* **Completion Criteria:** 333 tests passing; zero regressions; strict tenant-scoped isolation; sequential migration 0009.
 
 ---
 

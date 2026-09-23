@@ -350,12 +350,28 @@ PricingBreakdown
 * **Context:** An inventory item physically represents a discrete unit of a `ProductVariant`. Allowing the caller to provide an arbitrary, unvalidated SKU during intake risks SKU drift between the catalog variant and the physical stock piece.
 * **Decision:** Designate `variant.sku` as the single authoritative source of truth (Option A - Derived Snapshot). When intaking an item, the SKU is authoritatively derived from the linked `ProductVariant`. If the caller optionally supplies a SKU, the service verifies that it strictly matches `variant.sku` and rejects any mismatch with `ValidationError`.
 
+### ADR-0034: Global Marketplace Slug Uniqueness with URL-Safe Normalization
+* **Status:** Accepted (Stage 7)
+* **Context:** In a shared public marketplace storefront (`marketplace.v-gold.com/sellers/:slug`), seller identity routing requires unique, deterministic slugs. Tenant-scoped slugs would cause collision on public discovery URLs across distinct merchants.
+* **Decision:** Enforce global uniqueness on `SellerSlug` across all seller marketplace presences (`UNIQUE ("slug")` in migration `0009_seller_marketplace_foundation.sql`). Validate slug format strictly with `/^[a-z0-9]+(-[a-z0-9]+)*$/` (3–64 characters), trim and normalize to lowercase, and reject reserved platform routes (`admin`, `api`, `auth`, `marketplace`, `login`, `checkout`, etc.).
+
+### ADR-0035: Decoupled Seller Listings with Cross-Tenant Catalog Ownership Invariants
+* **Status:** Accepted (Stage 7)
+* **Context:** A seller offering products on the marketplace should not duplicate catalog entities into `MarketplaceProduct` or duplicate inventory pieces into `MarketplaceInventory`. Conflating these leads to desynchronized specifications and orphaned stock.
+* **Decision:** Introduce `SellerListing` as a commercial offer entity linking `SellerProfile` to the tenant's existing `Product` and `ProductVariant`. Enforce that `listing.tenantId === seller.tenantId === product.tenantId === variant.tenantId`. Enforce at database level via composite foreign keys `FOREIGN KEY ("seller_profile_id", "tenant_id") REFERENCES "seller_profiles"("id", "tenant_id")` and unique index `UNIQUE ("seller_profile_id", "product_variant_id")`.
+
+### ADR-0036: Cascading Seller Suspension and Finite Listing State Machine
+* **Status:** Accepted (Stage 7)
+* **Context:** Sellers may face compliance review or administrative holds. Allowing active listings to remain discoverable or permitting new listings to be activated while a merchant is suspended risks regulatory and financial harm.
+* **Decision:** Implement explicit state machines for `SellerProfile` (`DRAFT`, `ACTIVE`, `SUSPENDED`, `ARCHIVED`) and `SellerListing` (`DRAFT`, `ACTIVE`, `PAUSED`, `ARCHIVED`). Listing activation strictly requires `seller.status === 'ACTIVE'`. Suspending a seller prevents listing activation and suppresses listings from public discovery feeds.
+
 ---
 
 ## 9. Security & Boundary Hardening Status
 
 * **Credential Protection:** Provider API keys and connection credentials never enter domain entities, repository records, or API serialization DTOs.
-* **IDOR Protection:** Verified in `tests/idor-security.test.ts`, `tests/pricing-tenant-isolation.test.ts`, and `tests/catalog-inventory-security.test.ts`. Cross-tenant queries or mutations for Products, Variants, Inventory Items, Locations, and Movements are strictly rejected.
+* **IDOR Protection:** Verified in `tests/idor-security.test.ts`, `tests/pricing-tenant-isolation.test.ts`, `tests/catalog-inventory-security.test.ts`, and `tests/marketplace-service-and-isolation.test.ts`. Cross-tenant queries or mutations for Products, Variants, Inventory Items, Locations, Movements, Seller Profiles, and Seller Listings are strictly rejected.
+* **Public Discovery Sanitization:** Public marketplace endpoints (`/api/v1/marketplace/...`) strictly sanitize internal tenant IDs, tax identification numbers, business registration codes, internal store links, and audit metadata.
 * **User Enumeration Prevention:** Login failures return uniform `401 Unauthorized` ("Invalid email or password.") whether the email exists or not.
 * **Credential Leakage Prevention:** DTOs never serialize `password_hash`. `PasswordHash.toString()` redacts hash contents.
 * **Financial Rounding Attack Prevention:** Premature rounding is structurally prohibited; calculations preserve high-precision decimal representation.

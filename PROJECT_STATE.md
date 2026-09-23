@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.6.0-alpha`
-* **Current Stage:** **Stage 6 — Catalog & Inventory Foundations**
+* **Project Version:** `0.7.0-alpha`
+* **Current Stage:** **Stage 7 — Seller Marketplace Foundation**
 * **Stage Status:** **COMPLETE & FINALIZED**
 * **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_06_COMPLETE`
-* **Next Target Stage:** **Stage 7 — Seller Marketplace**
+* **Last Verified Snapshot:** `V-GOLD_STAGE_07_COMPLETE`
+* **Next Target Stage:** **Stage 8 — Seller OS**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -25,9 +25,9 @@
 | **4** | **Market Data Infrastructure** | **COMPLETE** | 140 passed / 0 skipped / 0 failed | PASS | PASS | Sources, Instruments, Price, Observations, Freshness policy, Ingestion, Query, Drizzle schema, 0003 migration |
 | **4.1**| **Financial Precision & Currency Semantics** | **COMPLETE** | 187 passed / 0 skipped / 0 failed | PASS | PASS | Audited precision matrix, audited rounding modes, NUMERIC(32, 16) FX storage, truncation guard, 0004 migration |
 | **5** | **Authoritative Pricing Engine** | **COMPLETE** | 237 passed / 0 skipped / 0 failed | PASS | PASS | Audited reference rule segregation, no silent commercial defaults, carat separation, rule config snapshot, 0005 & 0006 migrations |
-| **6** | **Catalog & Inventory Foundations** | **COMPLETE** | **293 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Product/Variant separation, SKU validation & anti-drift derivation, physical weight & carat invariants, finite InventoryStateMachine with IN_TRANSIT workflow, append-only movements, Unit of Work atomicity, store/tenant composite isolation, 0007 & 0008 migrations |
-| 7 | Seller Marketplace | PENDING | — | — | — | Awaiting user command |
-| 8 | Seller OS | PENDING | — | — | — | |
+| **6** | **Catalog & Inventory Foundations** | **COMPLETE** | 293 passed / 0 skipped / 0 failed | PASS | PASS | Product/Variant separation, SKU validation & anti-drift derivation, physical weight & carat invariants, finite InventoryStateMachine with IN_TRANSIT workflow, append-only movements, Unit of Work atomicity, store/tenant composite isolation, 0007 & 0008 migrations |
+| **7** | **Seller Marketplace Foundation** | **COMPLETE** | **333 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | SellerProfile identity & finite lifecycle, global slug uniqueness & normalization, SellerListing decoupled from physical inventory, cross-tenant catalog ownership invariants, cascading suspension, public sanitized discovery endpoints, 0009 migration |
+| 8 | Seller OS | PENDING | — | — | — | Awaiting user command |
 | 9 | AI Conversational Designer | PENDING | — | — | — | |
 | 10| AI Concept Generation | PENDING | — | — | — | |
 | 11| Visual Search Engine | PENDING | — | — | — | |
@@ -53,20 +53,19 @@
 
 ```text
 ========================================================================
-Stage 6: Catalog & Inventory Foundations Gate Summary
-- Total Tests:               293 passed / 0 skipped / 0 failed (56 test files)
-- Baseline Preservation:     100% (All 237 Stage 5 tests + 56 Stage 6 tests)
+Stage 7: Seller Marketplace Foundation Gate Summary
+- Total Tests:               333 passed / 0 skipped / 0 failed (60 test files)
+- Baseline Preservation:     100% (All 293 Stage 6 tests + 40 new Stage 7 tests)
 - TypeScript Strict Check:   PASS (0 errors across core, database, ai-gateway, web, tests)
-- Next.js Production Build:  PASS (19 routes compiled with zero errors)
-- Domain Decoupling:         PASS (Product/Variant in Catalog vs InventoryItem/Location in Inventory)
-- SKU Invariants:            PASS (Tenant-scoped uniqueness, format validation /^[A-Z0-9_-]{3,64}$/, authoritative variant derivation)
-- Weight Invariants:         PASS (grossWeight >= netGoldWeight + gemstoneMass; carat != gold mass; CARATS_PER_GRAM constant reuse; exact Decimal.js comparison)
-- Inventory State Machine:   PASS (SOLD -> AVAILABLE blocked without return workflow; LOST -> SOLD blocked; IN_TRANSIT start & complete lifecycle)
-- Append-Only Movements:     PASS (No update/delete; immutable audit trail)
-- Transactional UoW:         PASS (Atomic item and movement persistence with rollback on failure)
-- Store/Tenant Ownership:    PASS (Cross-tenant store IDOR prevention; composite DB foreign keys)
-- IDOR / Tenant Isolation:   PASS (Verified on Products, Variants, Items, Locations, Movements)
-- Migrations:                0007_catalog_inventory_foundation.sql & 0008_catalog_inventory_integrity.sql (Sequential, additive, reviewable)
+- Next.js Production Build:  PASS (21 routes compiled with zero errors)
+- Seller Identity:           PASS (SellerProfile, finite lifecycle: DRAFT, ACTIVE, SUSPENDED, ARCHIVED)
+- Public Presence:           PASS (SellerSlug normalized, global collision prevention, bio/branding)
+- Catalog Listing Coupling:  PASS (SellerListing decoupled from physical inventory; links to ProductVariant)
+- Cross-Tenant Invariants:   PASS (Store ownership verified, Product/Variant cross-tenant strictly blocked)
+- Cascading Suspension:      PASS (Suspended seller suppresses public discovery and blocks listing activation)
+- Public API Sanitization:   PASS (Strips tenantId, taxId, business registration, internal store links)
+- IDOR / Tenant Isolation:   PASS (Verified across Seller Profiles and Seller Listings)
+- Migrations:                0009_seller_marketplace_foundation.sql (Sequential, additive, reviewable)
 - PostgreSQL Integration:    POSTGRESQL INTEGRATION: NOT AVAILABLE (Sandbox has no pg service; schema & in-memory verified)
 ========================================================================
 ```
@@ -75,8 +74,8 @@ Stage 6: Catalog & Inventory Foundations Gate Summary
 
 ## Known Limitations & Out-of-Scope Declarations (Stage Confinement)
 
-1. **Marketplace & Seller OS:** No public storefront, multi-vendor commission splits, or merchant seller dashboards (Deferred to Stage 7 & 8).
-2. **Order, Checkout & Payment:** No cart, checkout session, order fulfillment, or PSP integration (Deferred to Stage 17).
-3. **Gemstone Valuation:** Gemstone metadata is recorded for catalog purposes only; automated 4Cs market pricing or Rapaport diamond appraisals are NOT implemented in Stage 6.
-4. **Digital Jewelry Passport:** Foundation identity references are created (`passportRef`, `JewelryIdentity`), but blockchain minting, QR verification, and public resale workflows are deferred.
-5. **AI Designer & Virtual Try-On:** No AI image generation, 3D glTF models, or AR try-on features are implemented in this stage.
+1. **Seller OS:** No comprehensive merchant operating system, multi-channel syncing, inventory reservation management, or seller team hierarchies (Deferred to Stage 8).
+2. **Order, Checkout & Payment:** No cart, checkout session, escrow, PSP integration, payout schedules, or transaction commission split engines (Deferred to Stage 17).
+3. **Marketplace Reviews & Messaging:** No buyer-seller chat, reviews, rating algorithms, or dispute mediation (Deferred to Stage 20).
+4. **AI Seller Assistant:** No automated copywriting, AI jewelry taggers, or concept generation (Deferred to Stage 9 & 10).
+5. **Pricing Engine:** Stage 7 strictly delegates all price calculations to Stage 5 `PricingEngine`; no commercial percentages or margins are invented in Marketplace.

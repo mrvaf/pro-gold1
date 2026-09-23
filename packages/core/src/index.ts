@@ -86,3 +86,15 @@ export * from './ports/inventory-location.repository.port.js';
 export * from './ports/inventory-item.repository.port.js';
 export * from './ports/inventory-movement.repository.port.js';
 export * from './ports/inventory-unit-of-work.port.js';
+
+// Seller Marketplace Foundations (Stage 7)
+export * from './domain/marketplace/seller-errors.js';
+export * from './domain/marketplace/seller-slug.js';
+export * from './domain/marketplace/seller-status.js';
+export * from './domain/marketplace/marketplace-presence.js';
+export * from './domain/marketplace/seller-profile.js';
+export * from './domain/marketplace/listing-status.js';
+export * from './domain/marketplace/seller-listing.js';
+export * from './ports/seller-profile.repository.port.js';
+export * from './ports/seller-listing.repository.port.js';
+

@@ -6,6 +6,10 @@ export const PERMISSIONS = [
   'tenant.update',
   'tenant.members.read',
   'tenant.members.manage',
+  'marketplace.seller.read',
+  'marketplace.seller.manage',
+  'marketplace.listing.read',
+  'marketplace.listing.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -15,14 +19,24 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'tenant.update',
     'tenant.members.read',
     'tenant.members.manage',
+    'marketplace.seller.read',
+    'marketplace.seller.manage',
+    'marketplace.listing.read',
+    'marketplace.listing.manage',
   ],
   ADMIN: [
     'tenant.read',
     'tenant.members.read',
     'tenant.members.manage',
+    'marketplace.seller.read',
+    'marketplace.seller.manage',
+    'marketplace.listing.read',
+    'marketplace.listing.manage',
   ],
   MEMBER: [
     'tenant.read',
+    'marketplace.seller.read',
+    'marketplace.listing.read',
   ],
 };
 
