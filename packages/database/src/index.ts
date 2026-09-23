@@ -14,6 +14,8 @@ export * from './repositories/drizzle-market-data-source.repository.js';
 export * from './repositories/drizzle-market-instrument.repository.js';
 export * from './repositories/drizzle-market-observation.repository.js';
 export * from './repositories/drizzle-fx-rate.repository.js';
+export * from './repositories/drizzle-pricing-rule.repository.js';
+export * from './repositories/drizzle-pricing-result.repository.js';
 
 // Adapters
 export * from './adapters/in-memory-tenant.repository.js';
@@ -25,6 +27,8 @@ export * from './adapters/in-memory-market-data-source.repository.js';
 export * from './adapters/in-memory-market-instrument.repository.js';
 export * from './adapters/in-memory-market-observation.repository.js';
 export * from './adapters/in-memory-fx-rate.repository.js';
+export * from './adapters/in-memory-pricing-rule.repository.js';
+export * from './adapters/in-memory-pricing-result.repository.js';
 
 // Providers
 export * from './providers/unavailable-market-data.provider.js';

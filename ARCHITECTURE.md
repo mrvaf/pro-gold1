@@ -170,16 +170,82 @@ All financial rounding is executed through `FinancialRoundingPolicy` wrapping ex
 
 ---
 
-## 6. Architectural Decision Records (ADRs)
+## 6. Authoritative Pricing Engine Architecture (Stage 5 Implemented)
+
+### 6.1 Guiding Mandates
+The **Authoritative Pricing Engine** is designed to provide fully deterministic, explainable, auditable, and mathematically invariant jewelry and precious metals pricing. It produces structured calculations rather than opaque numbers:
+
+```text
+PricingBreakdown
+├── Base Metal Value (pure gold mass × spot rate per canonical gram)
+├── Making Charge (ojrat: percentage, per-gram, or fixed)
+├── Seller Margin (sood: percentage on metal + ojrat, or fixed)
+├── Stone / Component Value (optional discrete gemstones)
+├── Subtotal
+├── Statutory Tax / VAT (Iranian rule: tax on ojrat+margin only; International: total VAT)
+├── Unrounded Total (exact arbitrary-precision sum)
+├── Rounding Adjustment (difference to presentation minor units)
+└── Final Price (authoritative rounded Money balance)
+```
+
+### 6.2 The Precious Metal Pricing Formula
+1. **Canonical Price Per Gram Conversion:**
+   External spot prices are quoted in various units (`TROY_OUNCE`, `MESGHAL`, `GRAM`, `KILOGRAM`, `TOLA`). The engine converts the rate to a pure gram base:
+   $$\text{ratePerGram} = \frac{\text{marketPrice.amount}}{\text{gramsPerUnit}}$$
+   Using exact constants (e.g., $1\text{ troy ounce} = 31.1034768\text{ g}$, $1\text{ mesghal} = 4.6083\text{ g}$).
+2. **Pure Metal Content:**
+   $$\text{pureGrams} = \text{weight.grams} \times \left(\frac{\text{purity.fineness}}{1000}\right)$$
+3. **Base Metal Value:**
+   $$\text{baseMetalValue} = \text{pureGrams} \times \text{ratePerGram}$$
+4. **Making Charge ($\text{Ojrat}$):**
+   - `PERCENTAGE`: $\text{baseMetalValue} \times \text{rate}$
+   - `PER_GRAM`: $\text{weight.grams} \times \text{rate}$
+   - `FIXED`: Flat fee in target currency
+   - `ZERO`: Raw bullion melt ($\text{Abshodeh}$)
+5. **Seller Margin ($\text{Sood}$):**
+   - `PERCENTAGE`: $(\text{baseMetalValue} + \text{makingCharge}) \times \text{marginRate}$
+   - `FIXED`: Flat fee in target currency
+   - `ZERO`: Wholesale / raw bullion
+6. **Statutory Tax / VAT ($\text{Maliat}$):**
+   - `MARGIN_AND_FEE_ONLY` (Iranian statutory gold reform 1400):
+     $$\text{taxableAmount} = \text{makingCharge} + \text{sellerMargin}$$
+     $$\text{taxAmount} = \text{taxableAmount} \times \text{taxRate}$$
+     *Raw gold base is completely exempt from VAT.*
+   - `TOTAL_VALUE` (International luxury retail):
+     $$\text{taxAmount} = \text{subtotal} \times \text{taxRate}$$
+   - `EXEMPT`: Zero tax.
+7. **Presentation Rounding & Invariant:**
+   $$\text{finalAmount} = \text{round}(\text{unroundedTotal}, \text{scale}, \text{mode})$$
+   $$\text{roundingAdjustment} = \text{finalAmount} - \text{unroundedTotal}$$
+   **Strict Mathematical Invariant:**
+   $$\sum_{i} \text{lineItem}_{i} = \text{finalAmount}$$
+
+### 6.3 Market Data Freshness Policy Integration
+- `FRESH`: Observation is evaluated immediately.
+- `STALE`: If `allowStaleMarketData = false`, calculation fails with `MARKET_DATA_STALE`. If allowed, calculation proceeds and flags `isStaleMarketData = true` in `PricingResult`.
+- `UNAVAILABLE`: Calculation strictly rejected with `MARKET_DATA_UNAVAILABLE`. No synthetic or hallucinated prices.
+
+### 6.4 Rule Versioning & Historical Reproducibility
+Pricing rules are versioned entities. For any historical transaction, reproducing the price with the same inputs, same rule version, and same market observation timestamp produces the exact identical price bit-for-bit.
+
+### 6.5 Explicitly Unimplemented Specifications (Stage Confinement)
+- Dynamic multi-seller RFQ reverse bidding: **NOT IMPLEMENTED — specification not defined**.
+- 4Cs Diamond Rapaport pricing matrix: **NOT IMPLEMENTED — specification not defined**.
+- Customer coupon / loyalty discount stacking: **NOT IMPLEMENTED (deferred to Stage 17)**.
+- Order checkout and payment gateway execution: **NOT IMPLEMENTED (deferred to Stage 17)**.
+
+---
+
+## 7. Architectural Decision Records (ADRs)
 
 * **ADR-0001:** Adoption of Hexagonal Architecture & Clean Separation (Stage 1)
 * **ADR-0002:** Arbitrary-Precision Financial Engine with Decimal.js (Stage 1 & 2)
 * **ADR-0003:** Dedicated AI Gateway with Factual Grounding (Stage 1)
 * **ADR-0004:** Multi-Tenant Data Isolation Strategy (Stage 1, 2, 3)
 * **ADR-0005:** Idempotency Pattern for All State Mutations (Accepted)
-* **ADR-0006:** Sequential Immutable Migrations (Stage 2: `0001`, Stage 3: `0002`, Stage 4: `0003`, Stage 4.1: `0004`)
+* **ADR-0006:** Sequential Immutable Migrations (Stage 2: `0001`, Stage 3: `0002`, Stage 4: `0003`, Stage 4.1: `0004`, Stage 5: `0005`)
 * **ADR-0007:** Bilingual Architecture with Native RTL Support (Stage 1)
-* **ADR-0008:** In-Memory Repository Testing Strategy (Stage 1, 2, 3, 4, 4.1)
+* **ADR-0008:** In-Memory Repository Testing Strategy (Stage 1, 2, 3, 4, 4.1, 5)
 * **ADR-0009:** Separation of Custom Manufacturing (RFQ) from Standard Commerce (Accepted)
 * **ADR-0010:** Digital Jewelry Passport & Style DNA Extensibility (Accepted)
 * **ADR-0011:** Canonical Grams and Millesimal Fineness for Precious Metal Primitives (Stage 2)
@@ -191,28 +257,28 @@ All financial rounding is executed through `FinancialRoundingPolicy` wrapping ex
 * **ADR-0017:** Append-Only Immutable Market Observation History & Idempotency (Stage 4)
 * **ADR-0018:** Strict Freshness Policy and Truthful Unavailable States (Stage 4)
 * **ADR-0019:** Arbitrary Decimal Precision and Unit Semantics for Precious Metals (Stage 4)
+* **ADR-0020:** Three-Tier Financial Precision Architecture and Explicit Rounding Policy (Stage 4.1)
+* **ADR-0021:** Directional Foreign Exchange (FX) Rate Modeling and Deterministic Inversion (Stage 4.1)
+* **ADR-0022:** Statutory Iranian Toman vs Rial 1:10 Deterministic Conversion (Stage 4.1)
 
-### ADR-0020: Three-Tier Financial Precision Architecture and Explicit Rounding Policy
-* **Status:** Accepted (Stage 4.1, Audited & Hardened)
-* **Context:** Financial applications in gold and jewelry suffer from precision collapse when intermediate formulas round prematurely, or when micro-currency inverse rates (e.g. IRR/USD $= 1 / 600,000$) truncate trailing digits. Furthermore, different jurisdictions and currencies require different scale rules (e.g. cents in USD vs whole units in Tomans).
-* **Decision:** Establish a strict Three-Tier Precision Architecture:
-  1. *Calculation Precision:* Raw Decimal.js arithmetic with no rounding during intermediate computation chains.
-  2. *Storage Precision:* PostgreSQL `NUMERIC(32, 16)` for FX rates, `NUMERIC(24, 8)` for market spot prices, and `NUMERIC(24, 4)` for monetary amounts. Explicit assertion (`FinancialRoundingPolicy.assertStorageScale()`) prohibits silent truncation before persistence.
-  3. *Presentation Precision:* Explicit rounding solely at the final boundary using audited modes (`ROUND_HALF_UP`, `ROUND_HALF_EVEN`, `ROUND_UP`, `ROUND_DOWN`). Terminology strictly distinguishes away-from-zero/towards-zero from ceiling/floor.
+### ADR-0023: Explainable Calculation Breakdown & Line Item Mathematical Invariant
+* **Status:** Accepted (Stage 5)
+* **Context:** Black-box pricing calculators that emit only a single final price prevent auditing, regulatory compliance, and transparent customer trust in jewelry commerce.
+* **Decision:** `PricingResult` must encapsulate a complete `PricingBreakdown` consisting of granular line items (Base Metal, Making Charge, Margin, Stone Value, Tax/VAT, Rounding Adjustment). The engine validates the mathematical invariant $\sum \text{lineItems} = \text{finalAmount}$ before completing any quote.
 
-### ADR-0021: Directional Foreign Exchange (FX) Rate Modeling and Deterministic Inversion
-* **Status:** Accepted (Stage 4.1)
-* **Context:** Currency conversion requires knowing the exact direction of quotes (e.g. `USD/EUR` vs `EUR/USD`). Implicitly swapping base and quote currencies creates 100x errors.
-* **Decision:** Model `FxRate` with explicit `baseCurrency` and `quoteCurrency` representing $1 \text{ base} = \text{rate} \times \text{quote}$. Inversion is explicitly handled via `invert()`, computing $\frac{1}{\text{rate}}$ using arbitrary precision Decimal arithmetic.
+### ADR-0024: Iranian Statutory Gold VAT Reform Compliance (VAT on Labor and Margin Only)
+* **Status:** Accepted (Stage 5)
+* **Context:** In Iranian gold markets, following the tax reform of 1400 (2021), raw gold bullion is legally exempt from VAT. Applying VAT to the entire piece constitutes an illegal double tax. Conversely, international markets levy VAT on the total retail price.
+* **Decision:** Codify configurable taxable bases in `PricingRule`: `MARGIN_AND_FEE_ONLY` (Iranian statutory gold rule where $\text{taxBase} = \text{makingCharge} + \text{sellerMargin}$), `TOTAL_VALUE` (international retail VAT), and `EXEMPT`.
 
-### ADR-0022: Statutory Iranian Toman vs Rial 1:10 Deterministic Conversion
-* **Status:** Accepted (Stage 4.1)
-* **Context:** In Iranian commerce, official accounting is maintained in Iranian Rials (IRR), while everyday jewelry pricing and buyer negotiations occur in Iranian Tomans (TOMAN). Hardcoding division or multiplication by 10 across scattered UI or controller files causes drift.
-* **Decision:** Formally codify the 1:10 ratio as domain constants `IRR_PER_TOMAN = 10` and `TOMAN_PER_IRR = 0.1`. Provide first-class domain methods `CurrencyConverter.tomanToIrr()` and `CurrencyConverter.irrToToman()` that guarantee exact mathematical conversion without floating-point conversion.
+### ADR-0025: Unit-Aware Canonical Spot Rate Normalization
+* **Status:** Accepted (Stage 5)
+* **Context:** Gold spot prices originate in diverse regional units (e.g. LBMA quotes in Troy Ounces, Tehran quotes in Mesghals). Computing gold values without explicit unit conversion causes orders-of-magnitude financial errors.
+* **Decision:** Implement `PricingUnitConverter` to transform external spot quotes to canonical pure-gram rates using arbitrary Decimal arithmetic, preserving lossless mass relationships.
 
 ---
 
-## 7. Security & Boundary Hardening Status
+## 8. Security & Boundary Hardening Status
 
 * **Credential Protection:** Provider API keys and connection credentials never enter domain entities, repository records, or API serialization DTOs.
 * **IDOR Protection:** Verified in `tests/idor-security.test.ts`. Cross-tenant resource queries or mutations are strictly rejected regardless of user-supplied tenant IDs.

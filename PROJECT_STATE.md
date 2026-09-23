@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.4.1-alpha`
-* **Current Stage:** **Stage 4.1 — Financial Precision & Currency Semantics (Audited & Hardened)**
-* **Stage Status:** **COMPLETE & AUDITED**
+* **Project Version:** `0.5.0-alpha`
+* **Current Stage:** **Stage 5 — Authoritative Pricing Engine**
+* **Stage Status:** **COMPLETE**
 * **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_04_1_FINAL_COMPLETE`
-* **Next Target Stage:** **Stage 5 — Authoritative Pricing Engine**
+* **Last Verified Snapshot:** `V-GOLD_STAGE_05_COMPLETE`
+* **Next Target Stage:** **Stage 6 — Catalog & Inventory Foundations**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -23,9 +23,9 @@
 | **2** | **Domain Models & Database Foundations** | **COMPLETE** | 56 passed / 0 skipped / 0 failed | PASS | PASS | Money, GoldPurity, Weight, Tenant, Store, Drizzle ORM, 0001 migration |
 | **3** | **IAM & Multi-Tenancy** | **COMPLETE** | 90 passed / 0 skipped / 0 failed | PASS | PASS | User, Email, PasswordHash, TenantMembership, Session, Scrypt, HttpOnly cookies, 0002 migration |
 | **4** | **Market Data Infrastructure** | **COMPLETE** | 140 passed / 0 skipped / 0 failed | PASS | PASS | Sources, Instruments, Price, Observations, Freshness policy, Ingestion, Query, Drizzle schema, 0003 migration |
-| **4.1**| **Financial Precision & Currency Semantics** | **COMPLETE (AUDITED)** | **187 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Audited precision matrix, audited rounding modes, NUMERIC(32, 16) FX storage, truncation guard, 0004 migration |
-| 5 | Authoritative Pricing Engine | PENDING | — | — | — | Awaiting user command |
-| 6 | Catalog & Inventory Foundations | PENDING | — | — | — | |
+| **4.1**| **Financial Precision & Currency Semantics** | **COMPLETE** | 187 passed / 0 skipped / 0 failed | PASS | PASS | Audited precision matrix, audited rounding modes, NUMERIC(32, 16) FX storage, truncation guard, 0004 migration |
+| **5** | **Authoritative Pricing Engine** | **COMPLETE** | **224 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Deterministic engine, line item breakdown invariant, unit-to-gram conversion, Iranian VAT (law 1400), 0005 migration |
+| 6 | Catalog & Inventory Foundations | PENDING | — | — | — | Awaiting user command |
 | 7 | Seller Marketplace | PENDING | — | — | — | |
 | 8 | Seller OS | PENDING | — | — | — | |
 | 9 | AI Conversational Designer | PENDING | — | — | — | |
@@ -49,96 +49,115 @@
 
 ---
 
-## Financial Precision & Rounding Audit Results (Stage 4.1)
+## Stage 5 Implemented Pricing Formulas
 
-### 1. Precision Matrix
-| Data Type | Domain Precision | Storage Precision | Presentation Precision | Rounding Boundary | Lossless? |
-|---|---|---|---|---|---|
-| **Monetary Amount (`Money`)** | Arbitrary (`Decimal.js`) | `NUMERIC(24, 4)` | Minor Units (USD/EUR: 2, IRR/TOMAN: 0) | Presentation / Storage Boundary | Yes (within 4 decimal places) |
-| **Market Spot Rate (`MarketPrice`)** | Arbitrary (`Decimal.js`) | `NUMERIC(24, 8)` | 2–4 decimals depending on quote unit | Ingestion & Display Boundary | Yes (within 8 decimal places) |
-| **FX Conversion Rate (`FxRate`)** | Arbitrary (`Decimal.js`) | `NUMERIC(32, 16)` | 4–8 decimals | Persistence Boundary | Yes (within 16 decimal places; micro-currencies preserved) |
-| **Precious Metal Weight (`Weight`)** | Arbitrary (`Decimal.js`) | `NUMERIC(16, 6)` | 3–4 decimals (grams) / 2 decimals (troy oz) | Physical Scale / Order Boundary | Yes (within 1 microgram) |
-| **Gold Purity (`GoldPurity`)** | Arbitrary (`Decimal.js`) | `NUMERIC(6, 4)` | 3–4 decimals (millesimal) / 0–1 decimals (karat) | Catalog Specification Boundary | Yes (within 0.0001 fineness) |
+### 1. Base Gold Spot Value
+$$\text{ratePerGram} = \frac{\text{marketPrice.amount}}{\text{gramsPerMarketUnit}}$$
+$$\text{pureGrams} = \text{weight.grams} \times \left(\frac{\text{purity.fineness}}{1000}\right)$$
+$$\text{baseMetalValue} = \text{pureGrams} \times \text{ratePerGram}$$
 
-### 2. Rounding Matrix
-All financial rounding is executed through `FinancialRoundingPolicy` wrapping exact `Decimal.js` rounding modes. Terminology is audited to eliminate conflation between directionality and ceiling/floor:
+### 2. Making Charge ($\text{Ojrat}$)
+- `PERCENTAGE`: $\text{baseMetalValue} \times \text{rate}$
+- `PER_GRAM`: $\text{weight.grams} \times \text{rate}$
+- `FIXED`: Flat monetary amount in target currency
+- `ZERO`: $\text{Money.zero(currency)}$
 
-| Mode Key | Decimal.js Constant | Mathematical Definition | Positive Midpoint (+1.25 to 1 dec) | Negative Midpoint (-1.25 to 1 dec) | Typical Use Case in V-GOLD |
-|---|---|---|---|---|---|
-| `HALF_UP` | `ROUND_HALF_UP` (4) | Nearest neighbor; exact midpoints (.5) round away from zero | `+1.3` | `-1.3` | Commercial pricing, consumer quotes, invoices |
-| `HALF_EVEN` | `ROUND_HALF_EVEN` (6) | Banker's rounding; exact midpoints round to nearest even digit | `+1.2` (`+1.35` -> `+1.4`) | `-1.2` (`-1.35` -> `-1.4`) | General ledger accounting, statistical aggregations |
-| `UP` | `ROUND_UP` (0) | Away from zero (positive increases, negative decreases) | `+1.3` (`+1.21` -> `+1.3`) | `-1.3` (`-1.21` -> `-1.3`) | Conservative fee estimation, buyer-facing tax rounding |
-| `DOWN` | `ROUND_DOWN` (1) | Towards zero (truncation) | `+1.2` (`+1.29` -> `+1.2`) | `-1.2` (`-1.29` -> `-1.2`) | Conservative buyer loyalty point earning, payout truncation |
-| `CEIL` | `ROUND_CEIL` (2) | Towards $+\infty$ (true mathematical ceiling) | `+1.3` | `-1.2` (`-1.21` -> `-1.2`) | Physical packaging unit allocation |
-| `FLOOR` | `ROUND_FLOOR` (3) | Towards $-\infty$ (true mathematical floor) | `+1.2` | `-1.3` (`-1.29` -> `-1.3`) | Minimum guaranteed yield calculations |
+### 3. Seller Margin ($\text{Sood}$)
+- `PERCENTAGE`: $(\text{baseMetalValue} + \text{makingCharge}) \times \text{marginRate}$
+- `FIXED`: Flat monetary amount in target currency
+- `ZERO`: $\text{Money.zero(currency)}$
 
-### 3. Persistence Contract & Truncation Guard
-- Database persistence expanded: `fx_rates.rate` now uses `NUMERIC(32, 16)`.
-- Silent database truncation is explicitly prevented via `FinancialRoundingPolicy.assertStorageScale()` and `FinancialRoundingPolicy.fitsStorageScale()`.
-- Persistence contract verified in `tests/storage-precision-contract.test.ts`.
+### 4. Stone / Gemstone Value
+- Sum of discrete gemstones / diamonds / pearls provided in quote context (default: $\text{Money.zero(currency)}$).
+
+### 5. Statutory Tax / Value Added Tax (VAT)
+- `MARGIN_AND_FEE_ONLY` (Iranian statutory gold reform 1400):
+  $$\text{taxableBase} = \text{makingCharge} + \text{sellerMargin}$$
+  $$\text{taxAmount} = \text{taxableBase} \times \text{taxRate}$$
+  *(Raw gold bullion is legally exempt from VAT).*
+- `TOTAL_VALUE` (International standard retail luxury VAT):
+  $$\text{taxAmount} = \text{subtotal} \times \text{taxRate}$$
+- `EXEMPT`: $\text{Money.zero(currency)}$
+
+### 6. Presentation Rounding & Line Item Invariant
+$$\text{finalAmount} = \text{round}(\text{unroundedTotal}, \text{scale}, \text{mode})$$
+$$\text{roundingAdjustment} = \text{finalAmount} - \text{unroundedTotal}$$
+$$\sum \text{lineItems} = \text{finalAmount} \quad (\text{Strict Invariant Verified})$$
+
+### 7. Formally Unimplemented Features (Strictly Stage-Confined)
+- Dynamic multi-seller RFQ reverse bidding: **NOT IMPLEMENTED — specification not defined**.
+- 4Cs Diamond Rapaport pricing matrix: **NOT IMPLEMENTED — specification not defined**.
+- Customer coupon / loyalty discount stacking: **NOT IMPLEMENTED (deferred to Stage 17)**.
+- Order checkout and payment gateway execution: **NOT IMPLEMENTED (deferred to Stage 17)**.
 
 ---
 
-## Stage 4.1 Completion Gate Audit
+## Stage 5 Completion Gate Audit
 
 | Gate Item | Target Standard | Measured Result | Status |
 | :--- | :--- | :--- | :---: |
-| **Financial Precision** | Decimal.js for authoritative values (zero `number`, `parseFloat()`, or float math) | Tested in `tests/financial-precision-invariants.test.ts` | **PASS** |
-| **Three-Tier Precision** | Calculation (raw) vs Storage (`NUMERIC(32, 16)` / `NUMERIC(24, 8)`) vs Presentation | Tested in `tests/financial-rounding-policy.test.ts` | **PASS** |
-| **Rounding Policy** | Explicit rounding modes with audited Decimal.js semantics; zero premature rounding | Tested in `tests/financial-rounding-policy.test.ts` | **PASS** |
-| **Storage Contract** | Lossless domain-to-storage-to-domain round-trip, silent truncation prevention | Tested in `tests/storage-precision-contract.test.ts` | **PASS** |
-| **Currency Semantics** | `IRR`, `TOMAN`, `USD`, `EUR` with minor units, accounting status, and fiat metadata | Tested in `tests/currency-semantics.test.ts` | **PASS** |
-| **Toman/Rial Relationship** | Exact deterministic 1:10 ratio (`IRR_PER_TOMAN = 10`, `TOMAN_PER_IRR = 0.1`) | Tested in `tests/currency-semantics.test.ts` | **PASS** |
-| **FX Rate Semantics** | Explicit direction ($1 \text{ base} = \text{rate} \times \text{quote}$), positive non-zero, deterministic inversion | Tested in `tests/fx-rate.test.ts` | **PASS** |
-| **Currency Conversion** | `CurrencyConverter.convert()` enforces base match and preserves raw precision | Tested in `tests/currency-conversion.test.ts` | **PASS** |
-| **Database Schema** | Drizzle schema for `fx_rates` with `NUMERIC(32, 16)` and unique idempotency constraint | Tested in `tests/database-schema-fx.test.ts` | **PASS** |
-| **DDL Migration** | Sequentially numbered `0004_financial_precision_currency_semantics.sql` | Tested in `tests/database-migration-fx.test.ts` | **PASS** |
-| **API Endpoints** | `/api/v1/finance/currencies`, `/api/v1/finance/fx-rates` | Implemented and verified in `apps/web` | **PASS** |
-| **Boundary Isolation** | `@v-gold/core` has ZERO framework, HTTP, DB, or provider SDK imports | AST file inspection in `tests/architecture.test.ts` | **PASS** |
-| **Test Suite** | Vitest monorepo suite executes reliably | **187 passed / 0 skipped / 0 failed** (40 test files) | **PASS** |
+| **Pricing Engine** | Deterministic, Decimal-safe, explainable, versionable | Implemented in `PricingEngine` | **PASS** |
+| **Calculation Breakdown** | Full granular line items with $\sum \text{lineItems} === \text{finalAmount}$ | Verified in `tests/pricing-engine.test.ts` | **PASS** |
+| **Market Data Integration** | Troy Ounce, Mesghal, Gram to pure gram conversion | Verified in `tests/pricing-unit-converter.test.ts` | **PASS** |
+| **Freshness Handling** | FRESH succeeds; STALE fails unless explicit override; UNAVAILABLE fails | Verified in `tests/pricing-engine.test.ts` | **PASS** |
+| **Purity Semantics** | 24K, 22K, 21K, 18K, 14K, 9K exact decimal fraction | Verified in `tests/pricing-engine.test.ts` | **PASS** |
+| **Multi-Currency** | Direct FX, reciprocal inversion, statutory 1:10 Toman/Rial | Verified in `tests/pricing-engine.test.ts` | **PASS** |
+| **Tenant Isolation** | Cross-tenant rule usage blocked with IDOR 403; results scoped | Verified in `tests/pricing-tenant-isolation.test.ts` | **PASS** |
+| **Database Schema** | `pricing_rules` and `pricing_results` Drizzle tables | Verified in `tests/database-schema-pricing.test.ts` | **PASS** |
+| **DDL Migration** | Sequentially numbered `0005_authoritative_pricing_engine.sql` | Verified in `tests/database-migration-pricing.test.ts` | **PASS** |
+| **Persistence Contract** | Domain -> Record -> Domain lossless round-trip | Verified in `tests/pricing-persistence-contract.test.ts` | **PASS** |
+| **Web API** | `POST /api/v1/pricing/calculate` with Zod validation & structured errors | Verified in `tests/api-pricing.test.ts` | **PASS** |
+| **Boundary Isolation** | `@v-gold/core` has ZERO framework, HTTP, DB, or provider SDK imports | Verified in `tests/architecture.test.ts` | **PASS** |
+| **Test Suite** | Vitest monorepo suite executes reliably | **224 passed / 0 skipped / 0 failed** (48 test files) | **PASS** |
 | **Typecheck** | TypeScript 5.7+ strict check across all workspaces & tests | **0 errors** | **PASS** |
-| **Production Build** | `npm run build` compiles all packages and Next.js web app (12 routes) | **Clean build** | **PASS** |
-| **PostgreSQL Integration** | Real database availability check | **NOT AVAILABLE** (PSQL daemon not in sandbox; reported transparently) | **REPORTED** |
+| **Production Build** | `npm run build` compiles all packages and Next.js web app (14 routes) | **Clean build** | **PASS** |
+| **PostgreSQL Integration** | Real database availability check | **NOT AVAILABLE** (Sandbox environment; reported transparently) | **REPORTED** |
 | **Real Provider Integration** | External market provider credentials detection | **NOT AVAILABLE** (No external API keys in environment; reported transparently) | **REPORTED** |
-| **Stage Confinement** | Zero pricing engine or customer quote logic implemented | Strictly Financial Precision & Currency Semantics only | **PASS** |
+| **Stage Confinement** | Zero Catalog, Marketplace, or Order checkout code | Strictly Pricing Engine Foundation only | **PASS** |
 
 ---
 
-## File System Inventory (Stage 4.1 Additions)
+## File System Inventory (Stage 5 Additions)
 
 ```text
-packages/core/src/domain/finance/
-├── currency.ts (enhanced with metadata, fiat, accounting status, and Toman/Rial ratio)
-├── rounding-policy.ts (Three-tier precision architecture, precision limits & explicit rounding modes)
-├── fx-rate.ts (Directional exchange rate value object with inversion)
-└── currency-conversion.ts (Authoritative currency conversion service)
+packages/core/src/domain/pricing/
+├── pricing-types.ts (Making charge, margin, tax, and rule configs)
+├── pricing-error.ts (Structured Domain errors: stale, unavailable, idor, etc.)
+├── pricing-unit-converter.ts (Lossless conversion from Troy Ounce/Mesghal to gram)
+├── pricing-rule.ts (PricingRule entity with versioning & time boundaries)
+├── pricing-breakdown.ts (PricingBreakdown value object & invariant verification)
+├── pricing-result.ts (PricingResult entity with market snapshots)
+└── pricing-engine.ts (Pure deterministic calculation engine)
 packages/core/src/ports/
-└── fx-rate.repository.port.ts
+├── pricing-rule.repository.port.ts
+└── pricing-result.repository.port.ts
 packages/database/src/
 ├── schema/
-│   └── fx-rates.ts (NUMERIC(32, 16))
+│   ├── pricing-rules.ts
+│   └── pricing-results.ts
 ├── migrations/
-│   └── 0004_financial_precision_currency_semantics.sql (NUMERIC(32, 16))
+│   └── 0005_authoritative_pricing_engine.sql
 ├── repositories/
-│   └── drizzle-fx-rate.repository.ts
+│   ├── drizzle-pricing-rule.repository.ts
+│   └── drizzle-pricing-result.repository.ts
 └── adapters/
-    └── in-memory-fx-rate.repository.ts
+    ├── in-memory-pricing-rule.repository.ts
+    └── in-memory-pricing-result.repository.ts
 apps/web/
-├── lib/finance/
-│   └── finance-container.ts
-└── app/api/v1/finance/
-    ├── currencies/route.ts
-    └── fx-rates/route.ts
+├── lib/pricing/
+│   ├── pricing-service.ts
+│   └── pricing-container.ts
+└── app/api/v1/pricing/
+    └── calculate/route.ts
 tests/
-├── currency-semantics.test.ts
-├── fx-rate.test.ts
-├── currency-conversion.test.ts
-├── financial-rounding-policy.test.ts
-├── financial-precision-invariants.test.ts
-├── storage-precision-contract.test.ts
-├── database-schema-fx.test.ts
-├── database-migration-fx.test.ts
-└── api-finance.test.ts
+├── pricing-unit-converter.test.ts
+├── pricing-rule.test.ts
+├── pricing-engine.test.ts
+├── pricing-tenant-isolation.test.ts
+├── pricing-persistence-contract.test.ts
+├── database-schema-pricing.test.ts
+├── database-migration-pricing.test.ts
+└── api-pricing.test.ts
 ```
 
 ---
@@ -149,11 +168,12 @@ tests/
 * [x] No `parseFloat()`, `Math.round()`, or binary float math in authoritative paths.
 * [x] Clear codified distinction between `MarketPrice` (quote per mass unit) and `Money` (balance).
 * [x] Exact deterministic 1:10 relationship between Iranian Toman and Rial.
-* [x] Directional FX rate modeling with arbitrary-precision inversion.
-* [x] Three-tier precision architecture: Calculation vs Storage vs Presentation.
-* [x] Audited rounding semantics distinguishing away-from-zero/towards-zero from ceiling/floor.
-* [x] `NUMERIC(32, 16)` FX rate storage preventing precision collapse on micro-currencies.
-* [x] Explicit truncation guard preventing silent database precision loss.
-* [x] No pricing engine formulas (labor fee, taxes, margin, quotes) implemented in Stage 4.1.
-* [x] Exactly Stage 4.1 audited and finalized.
-* [x] Engine stopped awaiting user authorization for Stage 5.
+* [x] Unit conversion handles Troy Ounces, Grams, and Mesghals losslessly.
+* [x] Complete, explainable calculation breakdown provided with line items.
+* [x] Mathematical invariant verified: $\sum \text{lineItems} === \text{finalAmount}$.
+* [x] Strict market data freshness enforcement.
+* [x] Rule versioning and historical reproducibility verified.
+* [x] Strict tenant isolation and IDOR protection enforced.
+* [x] No catalog, cart, order, or checkout code created.
+* [x] Exactly Stage 5 completed.
+* [x] Engine stopped awaiting user authorization for Stage 6.

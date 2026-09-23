@@ -53,3 +53,14 @@ export * from './domain/market-data/market-observation.js';
 export * from './domain/market-data/market-data-freshness.policy.js';
 export * from './domain/market-data/market-data-ingestion.service.js';
 export * from './domain/market-data/market-data-query.service.js';
+
+// Authoritative Pricing Foundations (Stage 5)
+export * from './domain/pricing/pricing-types.js';
+export * from './domain/pricing/pricing-error.js';
+export * from './domain/pricing/pricing-unit-converter.js';
+export * from './domain/pricing/pricing-rule.js';
+export * from './domain/pricing/pricing-breakdown.js';
+export * from './domain/pricing/pricing-result.js';
+export * from './domain/pricing/pricing-engine.js';
+export * from './ports/pricing-rule.repository.port.js';
+export * from './ports/pricing-result.repository.port.js';
