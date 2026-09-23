@@ -101,9 +101,12 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
   - Decoupling of Catalog (Product, ProductVariant) from physical serialized stock (InventoryItem, InventoryLocation).
   - Multi-variant jewelry attributes (purity, metal mass, gemstone carat metadata).
   - Physical mass invariants ($\text{grossWeight} \ge \text{netGoldWeight} + \sum \text{gemstoneWeight}$) and strict non-interchangeability of carats with gold mass.
-  - Finite Inventory State Machine (`AVAILABLE`, `RESERVED`, `SOLD`, `DAMAGED`, `LOST`, `IN_TRANSIT`).
+  - Finite Inventory State Machine (`AVAILABLE`, `RESERVED`, `SOLD`, `DAMAGED`, `LOST`, `IN_TRANSIT`) with explicit `startTransfer` and `completeTransfer` transitions.
   - Append-only immutable `InventoryMovement` audit log.
-* **Completion Criteria:** 280 tests passing; zero regressions; strict tenant-scoped SKU and IDOR protection.
+  - Transaction-safe `InventoryUnitOfWorkPort` with atomic persistence and failure rollback.
+  - Tenant store ownership verification and composite foreign keys `(store_id, tenant_id)`.
+  - Authoritative `ProductVariant` SKU derivation with caller mismatch rejection.
+* **Completion Criteria:** 293 tests passing; zero regressions; strict tenant-scoped SKU and IDOR protection; sequential migrations 0007 and 0008.
 
 ---
 

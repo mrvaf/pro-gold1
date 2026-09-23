@@ -3,6 +3,8 @@ import {
   type InventoryItemRepositoryPort,
   type InventoryMovementRepositoryPort,
   type ProductVariantRepositoryPort,
+  type InventoryUnitOfWorkPort,
+  type StoreRepositoryPort,
   type InventoryLocationListFilter,
   type InventoryItemListFilter,
   type InventoryMovementListFilter,
@@ -46,7 +48,7 @@ export interface IntakeItemInput {
   tenantId: string;
   storeId?: string | undefined;
   productVariantId: string;
-  sku: string;
+  sku?: string | undefined; // Optional: derived automatically from variant.sku (Option A - Derived Snapshot)
   locationId: string;
   serialNumber?: string | undefined;
   barcode?: string | undefined;
@@ -74,17 +76,31 @@ export class InventoryService {
     private readonly locationRepo: InventoryLocationRepositoryPort,
     private readonly itemRepo: InventoryItemRepositoryPort,
     private readonly movementRepo: InventoryMovementRepositoryPort,
-    private readonly variantRepo: ProductVariantRepositoryPort
+    private readonly variantRepo: ProductVariantRepositoryPort,
+    private readonly uow: InventoryUnitOfWorkPort,
+    private readonly storeRepo?: StoreRepositoryPort
   ) {}
 
   async createLocation(
     input: CreateLocationInput
-  ): Promise<Result<InventoryLocation, ValidationError | ConflictError>> {
+  ): Promise<Result<InventoryLocation, ValidationError | ConflictError | ForbiddenError>> {
     const tenantId = createEntityId<TenantId>(input.tenantId);
     const storeId = input.storeId ? createEntityId<StoreId>(input.storeId) : undefined;
     const actor = input.actorId
       ? ActorReference.user(input.actorId).unwrapOr(ActorReference.system())
       : ActorReference.system();
+
+    // Verify store ownership: if storeId is provided, store must belong to the same tenant
+    if (storeId && this.storeRepo) {
+      const store = await this.storeRepo.findById(tenantId, storeId);
+      if (!store) {
+        return err(
+          new ForbiddenError(
+            `Store "${input.storeId}" does not exist or does not belong to tenant "${input.tenantId}".`
+          )
+        );
+      }
+    }
 
     // Verify code uniqueness within tenant
     const existing = await this.locationRepo.findByCode(input.code, tenantId);
@@ -165,7 +181,7 @@ export class InventoryService {
       return err(new NotFoundError(`Variant "${input.productVariantId}" not found.`));
     }
 
-    // 2. Verify destination location exists and is ACTIVE
+    // 2. Verify destination location exists and belongs to same tenant
     const location = await this.locationRepo.findById(locId, tenId);
     if (!location) {
       const anyLoc = await this.locationRepo.findById(locId);
@@ -178,7 +194,32 @@ export class InventoryService {
       return err(new BusinessRuleViolationError(`Cannot intake item into INACTIVE location "${location.name}".`));
     }
 
-    // 3. Verify Serial Number uniqueness if provided
+    // 3. Store / Tenant ownership and compatibility check
+    if (storeId && this.storeRepo) {
+      const store = await this.storeRepo.findById(tenId, storeId);
+      if (!store) {
+        return err(
+          new ForbiddenError(
+            `Store "${input.storeId}" does not exist or does not belong to tenant "${input.tenantId}".`
+          )
+        );
+      }
+    }
+
+    // If destination location has a designated storeId, verify compatibility
+    let effectiveStoreId = storeId;
+    if (location.storeId) {
+      if (storeId && storeId !== location.storeId) {
+        return err(
+          new BusinessRuleViolationError(
+            `Store mismatch: Specified storeId "${input.storeId}" does not match location storeId "${location.storeId}".`
+          )
+        );
+      }
+      effectiveStoreId = location.storeId;
+    }
+
+    // 4. Verify Serial Number uniqueness if provided
     if (input.serialNumber && input.serialNumber.trim().length > 0) {
       const existingSerial = await this.itemRepo.findBySerialNumber(input.serialNumber, tenId);
       if (existingSerial) {
@@ -190,11 +231,26 @@ export class InventoryService {
       }
     }
 
-    // 4. Validate SKU
-    const skuRes = SKU.create(input.sku);
-    if (skuRes.isErr) return err(skuRes.error);
+    // 5. Authoritative SKU derivation & Anti-Drift Invariant (Option A - Derived Snapshot)
+    // The SKU is authoritatively sourced from variant.sku to prevent drift.
+    // If the caller provided a SKU, it MUST match variant.sku exactly.
+    let itemSku: SKU;
+    if (input.sku && input.sku.trim().length > 0) {
+      const skuRes = SKU.create(input.sku);
+      if (skuRes.isErr) return err(skuRes.error);
+      if (skuRes.value.value !== variant.sku.value) {
+        return err(
+          new ValidationError(
+            `SKU mismatch: Specified SKU "${input.sku}" does not match authoritative variant SKU "${variant.sku.value}".`
+          )
+        );
+      }
+      itemSku = skuRes.value;
+    } else {
+      itemSku = variant.sku;
+    }
 
-    // 5. Validate Weights and Purity
+    // 6. Validate Weights and Purity
     const grossRes = Weight.fromGrams(input.grossWeightGrams.toString());
     if (grossRes.isErr) return err(grossRes.error);
 
@@ -204,12 +260,12 @@ export class InventoryService {
     const purityRes = GoldPurity.fromFineness(new Decimal(input.purityFineness));
     if (purityRes.isErr) return err(purityRes.error);
 
-    // 6. Execute intake in domain entity
+    // 7. Execute intake in domain entity
     const intakeRes = InventoryItem.intake({
       tenantId: tenId,
-      storeId,
+      storeId: effectiveStoreId,
       productVariantId: varId,
-      sku: skuRes.value,
+      sku: itemSku,
       serialNumber: input.serialNumber,
       barcode: input.barcode,
       locationId: locId,
@@ -226,9 +282,8 @@ export class InventoryService {
 
     const { item, movement } = intakeRes.value;
 
-    // Persist item and initial INTAKE movement atomically
-    await this.itemRepo.save(item);
-    await this.movementRepo.record(movement);
+    // 8. Atomically persist item and initial INTAKE movement via Unit of Work
+    await this.uow.saveItemWithMovement(item, movement);
 
     return ok({ item, movement });
   }
@@ -279,8 +334,9 @@ export class InventoryService {
     if (transferRes.isErr) return err(transferRes.error);
 
     const movement = transferRes.value;
-    await this.itemRepo.save(item);
-    await this.movementRepo.record(movement);
+
+    // Atomic persistence via Unit of Work
+    await this.uow.saveItemWithMovement(item, movement);
 
     return ok({ item, movement });
   }
@@ -332,6 +388,20 @@ export class InventoryService {
         moveRes = item.markAsLost(actor, input.reason ?? 'Marked as missing/lost');
         break;
 
+      case 'IN_TRANSIT':
+        if (!input.toLocationId) {
+          return err(
+            new ValidationError('Target destination locationId is required when moving item IN_TRANSIT.')
+          );
+        }
+        moveRes = item.startTransfer(
+          createEntityId<InventoryLocationId>(input.toLocationId),
+          actor,
+          input.reference,
+          input.reason
+        );
+        break;
+
       case 'AVAILABLE':
         if (item.status === 'SOLD') {
           // Explicit return from sold
@@ -346,6 +416,18 @@ export class InventoryService {
           );
         } else if (item.status === 'RESERVED') {
           moveRes = item.releaseReservation(actor, input.reference);
+        } else if (item.status === 'IN_TRANSIT') {
+          if (!input.toLocationId) {
+            return err(
+              new ValidationError('Arrival destination locationId is required when completing transit.')
+            );
+          }
+          moveRes = item.completeTransfer(
+            createEntityId<InventoryLocationId>(input.toLocationId),
+            actor,
+            input.reference,
+            input.reason
+          );
         } else if (item.status === 'LOST') {
           if (!input.toLocationId) {
             return err(new ValidationError('Target location must be specified when recovering a lost item.'));
@@ -375,8 +457,9 @@ export class InventoryService {
     if (moveRes.isErr) return err(moveRes.error);
 
     const movement = moveRes.value;
-    await this.itemRepo.save(item);
-    await this.movementRepo.record(movement);
+
+    // Atomic persistence via Unit of Work
+    await this.uow.saveItemWithMovement(item, movement);
 
     return ok({ item, movement });
   }

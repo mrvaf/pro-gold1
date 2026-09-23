@@ -333,7 +333,22 @@ PricingBreakdown
 ### ADR-0030: Physical Jewelry Mass Invariants and Non-Interchangeable Gemstone Carat Semantics
 * **Status:** Accepted (Stage 6)
 * **Context:** Conflating gemstone carats with gold weight leads to severe financial calculation errors. Physically impossible items (gross weight less than net gold or gemstone mass) corrupt valuation.
-* **Decision:** Introduce dedicated `GemstoneCaratWeight` distinct from precious metal `Weight`. Enforce physical validation: $\text{grossWeight} \ge \text{netGoldWeight} + \sum \text{gemstoneWeight}$. Prohibit accepting carats as precious metal weight.
+* **Decision:** Introduce dedicated `GemstoneCaratWeight` distinct from precious metal `Weight`. Enforce physical validation: $\text{grossWeight} \ge \text{netGoldWeight} + \sum \text{gemstoneWeight}$. Prohibit accepting carats as precious metal weight. Ensure exact physical calculation without arbitrary tolerance subtractions using `WEIGHT_CONVERSION_CONSTANTS.CARATS_PER_GRAM`.
+
+### ADR-0031: Multi-Tenant Store Ownership Verification and Composite Foreign Keys
+* **Status:** Accepted (Stage 6 Audit)
+* **Context:** A merchant tenant operating multiple physical retail branches or vaults may inadvertently reference a store or location ID belonging to another tenant if only single-column foreign keys `(store_id)` are enforced.
+* **Decision:** Enforce tenant ownership validation at application service boundaries (`CatalogService`, `InventoryService`) via `StoreRepositoryPort`. At the PostgreSQL schema level (additive migration `0008_catalog_inventory_integrity.sql`), introduce composite unique constraint `UNIQUE ("id", "tenant_id")` on `stores` and enforce composite foreign keys `FOREIGN KEY ("store_id", "tenant_id") REFERENCES "stores"("id", "tenant_id")` across `products`, `inventory_locations`, and `inventory_items`.
+
+### ADR-0032: Inventory Unit of Work for Atomically Consistent Item and Movement Persistence
+* **Status:** Accepted (Stage 6 Audit)
+* **Context:** In physical jewelry operations, an intake or lifecycle state transition involves mutating an `InventoryItem` and recording an `InventoryMovement` audit record. Independent calls to `itemRepo.save(item)` and `movementRepo.record(movement)` permit split-brain failure scenarios where an item is saved or updated but movement creation fails, creating un-audited inventory states.
+* **Decision:** Introduce domain-agnostic `InventoryUnitOfWorkPort` with `saveItemWithMovement(item, movement)`. Implement `DrizzleInventoryUnitOfWork` executing both writes within a single PostgreSQL ACID transaction (`db.transaction`). Implement `InMemoryInventoryUnitOfWork` providing atomic rollback and failure-injection test hooks for unit and contract testing.
+
+### ADR-0033: Authoritative ProductVariant SKU Snapshot in Physical Inventory Pieces
+* **Status:** Accepted (Stage 6 Audit)
+* **Context:** An inventory item physically represents a discrete unit of a `ProductVariant`. Allowing the caller to provide an arbitrary, unvalidated SKU during intake risks SKU drift between the catalog variant and the physical stock piece.
+* **Decision:** Designate `variant.sku` as the single authoritative source of truth (Option A - Derived Snapshot). When intaking an item, the SKU is authoritatively derived from the linked `ProductVariant`. If the caller optionally supplies a SKU, the service verifies that it strictly matches `variant.sku` and rejects any mismatch with `ValidationError`.
 
 ---
 

@@ -21,6 +21,7 @@ export * from './repositories/drizzle-product-variant.repository.js';
 export * from './repositories/drizzle-inventory-location.repository.js';
 export * from './repositories/drizzle-inventory-item.repository.js';
 export * from './repositories/drizzle-inventory-movement.repository.js';
+export * from './repositories/drizzle-inventory-unit-of-work.js';
 
 // Adapters
 export * from './adapters/in-memory-tenant.repository.js';
@@ -39,6 +40,7 @@ export * from './adapters/in-memory-product-variant.repository.js';
 export * from './adapters/in-memory-inventory-location.repository.js';
 export * from './adapters/in-memory-inventory-item.repository.js';
 export * from './adapters/in-memory-inventory-movement.repository.js';
+export * from './adapters/in-memory-inventory-unit-of-work.js';
 
 // Providers
 export * from './providers/unavailable-market-data.provider.js';

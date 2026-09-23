@@ -1,6 +1,7 @@
 import {
   type ProductRepositoryPort,
   type ProductVariantRepositoryPort,
+  type StoreRepositoryPort,
   type ProductListFilter,
   type ProductVariantListFilter,
   Product,
@@ -72,7 +73,8 @@ export interface CreateVariantInput {
 export class CatalogService {
   constructor(
     private readonly productRepo: ProductRepositoryPort,
-    private readonly variantRepo: ProductVariantRepositoryPort
+    private readonly variantRepo: ProductVariantRepositoryPort,
+    private readonly storeRepo?: StoreRepositoryPort
   ) {}
 
   async createProduct(
@@ -83,6 +85,18 @@ export class CatalogService {
     const actor = input.actorId
       ? ActorReference.user(input.actorId).unwrapOr(ActorReference.system())
       : ActorReference.system();
+
+    // Verify store ownership: if storeId is provided, store must belong to the same tenant
+    if (storeId && this.storeRepo) {
+      const store = await this.storeRepo.findById(tenantId, storeId);
+      if (!store) {
+        return err(
+          new ForbiddenError(
+            `Store "${input.storeId}" does not exist or does not belong to tenant "${input.tenantId}".`
+          )
+        );
+      }
+    }
 
     const productRes = Product.create({
       tenantId,

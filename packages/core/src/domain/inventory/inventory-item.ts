@@ -343,6 +343,76 @@ export class InventoryItem extends Entity<InventoryItemId> {
   }
 
   /**
+   * Begin transit transfer to another physical location (sets status to IN_TRANSIT).
+   */
+  startTransfer(
+    toLocationId: InventoryLocationId,
+    actor: ActorReference,
+    reference?: string,
+    notes?: string
+  ): Result<InventoryMovement, ValidationError | BusinessRuleViolationError> {
+    if (!toLocationId || toLocationId.trim().length === 0) {
+      return err(new ValidationError('Target location cannot be empty.'));
+    }
+    if (this._locationId === toLocationId) {
+      return err(new BusinessRuleViolationError('Item is already in the specified location.'));
+    }
+
+    const val = InventoryStateMachine.validateTransition(this._status, 'IN_TRANSIT');
+    if (val.isErr) return err(val.error);
+
+    const fromStatus = this._status;
+    this._status = 'IN_TRANSIT';
+    this._audit = this._audit.touch(actor);
+
+    return InventoryMovement.record({
+      tenantId: this._tenantId,
+      inventoryItemId: this.id,
+      movementType: 'TRANSFER',
+      fromLocationId: this._locationId,
+      toLocationId,
+      fromStatus,
+      toStatus: 'IN_TRANSIT',
+      quantity: this._quantity,
+      actor,
+      reference,
+      notes: notes ?? 'Dispatching for physical transit',
+    });
+  }
+
+  /**
+   * Complete arrival of an item that is IN_TRANSIT at its target destination location.
+   */
+  completeTransfer(
+    arrivalLocationId: InventoryLocationId,
+    actor: ActorReference,
+    reference?: string,
+    notes?: string
+  ): Result<InventoryMovement, ValidationError | BusinessRuleViolationError> {
+    const val = InventoryStateMachine.validateTransition(this._status, 'AVAILABLE');
+    if (val.isErr) return err(val.error);
+
+    const fromLoc = this._locationId;
+    this._locationId = arrivalLocationId;
+    this._status = 'AVAILABLE';
+    this._audit = this._audit.touch(actor);
+
+    return InventoryMovement.record({
+      tenantId: this._tenantId,
+      inventoryItemId: this.id,
+      movementType: 'TRANSFER',
+      fromLocationId: fromLoc,
+      toLocationId: arrivalLocationId,
+      fromStatus: 'IN_TRANSIT',
+      toStatus: 'AVAILABLE',
+      quantity: this._quantity,
+      actor,
+      reference,
+      notes: notes ?? 'Arrived and checked into destination location',
+    });
+  }
+
+  /**
    * Reserve item for a customer.
    */
   reserve(

@@ -2,7 +2,7 @@ import { Decimal } from 'decimal.js';
 import { ValueObject } from '../../common/value-object.js';
 import { ValidationError } from '../../common/errors.js';
 import { err, ok, type Result } from '../../common/result.js';
-import { Weight } from '../material/weight.js';
+import { Weight, WEIGHT_CONVERSION_CONSTANTS } from '../material/weight.js';
 
 export type GemstoneType = 'DIAMOND' | 'RUBY' | 'EMERALD' | 'SAPPHIRE' | 'PEARL' | 'OTHER';
 
@@ -46,10 +46,10 @@ export class GemstoneCaratWeight extends ValueObject<GemstoneCaratWeightProps> {
   /**
    * Converts gemstone carats to physical Weight in grams for gross item mass calculation only.
    * Note: This returns physical weight, which must NOT be treated as gold mass.
+   * Strictly reuses the canonical WEIGHT_CONVERSION_CONSTANTS.CARATS_PER_GRAM (5 ct = 1 g).
    */
   toPhysicalWeight(): Weight {
-    // 1 carat = 0.200 grams (1 gram = 5 carats)
-    const grams = this._carats.dividedBy(5);
+    const grams = this._carats.dividedBy(WEIGHT_CONVERSION_CONSTANTS.CARATS_PER_GRAM);
     return Weight.fromGrams(grams).unwrap();
   }
 

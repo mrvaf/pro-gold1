@@ -7,7 +7,7 @@ const intakeItemSchema = z.object({
   tenantId: z.string().min(1, 'tenantId is required'),
   storeId: z.string().optional(),
   productVariantId: z.string().min(1, 'productVariantId is required'),
-  sku: z.string().min(3).max(64),
+  sku: z.string().min(3).max(64).optional(),
   locationId: z.string().min(1, 'locationId is required'),
   serialNumber: z.string().optional(),
   barcode: z.string().optional(),

@@ -85,3 +85,4 @@ export * from './domain/inventory/inventory-errors.js';
 export * from './ports/inventory-location.repository.port.js';
 export * from './ports/inventory-item.repository.port.js';
 export * from './ports/inventory-movement.repository.port.js';
+export * from './ports/inventory-unit-of-work.port.js';

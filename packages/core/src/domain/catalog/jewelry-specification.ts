@@ -142,10 +142,9 @@ export class JewelrySpecification extends ValueObject<JewelrySpecificationProps>
       totalStoneGrams = totalStoneGrams.plus(stone.totalPhysicalWeight().grams);
     }
 
-    // Physical Invariant 2: Gross weight cannot be less than net metal + gemstones mass
+    // Physical Invariant 2: Gross weight cannot be less than net metal + gemstones mass (Exact Decimal.js comparison)
     const totalExpectedGrams = netGoldGrams.plus(totalStoneGrams);
-    // Allow standard microgram floating tolerance if any (0.0001g)
-    if (grossGrams.lessThan(totalExpectedGrams.minus(new Decimal('0.0001')))) {
+    if (grossGrams.lessThan(totalExpectedGrams)) {
       return err(
         new ValidationError(
           `Gross weight (${grossGrams.toString()}g) is less than combined metal (${netGoldGrams.toString()}g) and gemstone mass (${totalStoneGrams.toString()}g, total ${totalExpectedGrams.toString()}g).`

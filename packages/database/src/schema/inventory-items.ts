@@ -1,4 +1,5 @@
-import { pgTable, varchar, numeric, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, numeric, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { tenantsTable } from './tenants.js';
 import { storesTable } from './stores.js';
 import { productVariantsTable } from './product-variants.js';
@@ -39,7 +40,9 @@ export const inventoryItemsTable = pgTable(
     index('inventory_items_tenant_status_idx').on(table.tenantId, table.status),
     index('inventory_items_variant_idx').on(table.productVariantId),
     index('inventory_items_location_idx').on(table.locationId),
-    index('inventory_items_serial_idx').on(table.tenantId, table.serialNumber),
+    uniqueIndex('inventory_items_tenant_serial_uniq')
+      .on(table.tenantId, table.serialNumber)
+      .where(sql`"serial_number" IS NOT NULL`),
   ]
 );
 
