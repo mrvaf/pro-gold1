@@ -266,5 +266,33 @@ describe('Seller Marketplace Web API Endpoints', () => {
       // Public listing DTO sanitization check: no tenantId
       expect(json.data[0].tenantId).toBeUndefined();
     });
+
+    it('immediately suppresses listings from public discovery and returns 404 when seller is suspended', async () => {
+      // 1. Suspend the seller via API
+      const suspendReq = new NextRequest(`http://localhost:3000/api/v1/sellers/${sellerId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          tenantId,
+          targetStatus: 'SUSPENDED',
+          statusReason: 'Administrative audit',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const suspendRes = await updateSellerApi(suspendReq, { params: Promise.resolve({ id: sellerId }) });
+      expect(suspendRes.status).toBe(200);
+
+      // 2. GET /api/v1/marketplace/sellers/:slug must now return 404
+      const pubSellerReq = new NextRequest(`http://localhost:3000/api/v1/marketplace/sellers/${sellerSlug}`);
+      const pubSellerRes = await getPublicSellerApi(pubSellerReq, { params: Promise.resolve({ slug: sellerSlug }) });
+      expect(pubSellerRes.status).toBe(404);
+
+      // 3. GET /api/v1/marketplace/listings must now exclude this seller's active listing
+      const feedReq = new NextRequest(`http://localhost:3000/api/v1/marketplace/listings?sellerProfileId=${sellerId}`);
+      const feedRes = await listPublicListingsApi(feedReq);
+      expect(feedRes.status).toBe(200);
+      const feedJson = await feedRes.json();
+      expect(feedJson.success).toBe(true);
+      expect(feedJson.data.length).toBe(0); // Suspended seller's listing is suppressed!
+    });
   });
 });

@@ -352,18 +352,23 @@ PricingBreakdown
 
 ### ADR-0034: Global Marketplace Slug Uniqueness with URL-Safe Normalization
 * **Status:** Accepted (Stage 7)
-* **Context:** In a shared public marketplace storefront (`marketplace.v-gold.com/sellers/:slug`), seller identity routing requires unique, deterministic slugs. Tenant-scoped slugs would cause collision on public discovery URLs across distinct merchants.
+* **Context:** In a shared public marketplace storefront (`marketplace.v-gold.com/sellers/:slug`), seller identity routing requires unique, deterministic slugs. Tenant-scoped slugs would cause collision on public discovery URLs across distinct merchants sharing the marketplace domain.
 * **Decision:** Enforce global uniqueness on `SellerSlug` across all seller marketplace presences (`UNIQUE ("slug")` in migration `0009_seller_marketplace_foundation.sql`). Validate slug format strictly with `/^[a-z0-9]+(-[a-z0-9]+)*$/` (3–64 characters), trim and normalize to lowercase, and reject reserved platform routes (`admin`, `api`, `auth`, `marketplace`, `login`, `checkout`, etc.).
+* **Architectural Scope Note:** This is an explicit marketplace URL architecture decision, not a statutory or externally mandated business rule. In single-tenant white-label deployments, slugs could be scoped per tenant (`tenant_id, slug`), but for a unified precious metals marketplace, global uniqueness provides direct, collision-free vanity storefront URLs.
 
 ### ADR-0035: Decoupled Seller Listings with Cross-Tenant Catalog Ownership Invariants
 * **Status:** Accepted (Stage 7)
-* **Context:** A seller offering products on the marketplace should not duplicate catalog entities into `MarketplaceProduct` or duplicate inventory pieces into `MarketplaceInventory`. Conflating these leads to desynchronized specifications and orphaned stock.
-* **Decision:** Introduce `SellerListing` as a commercial offer entity linking `SellerProfile` to the tenant's existing `Product` and `ProductVariant`. Enforce that `listing.tenantId === seller.tenantId === product.tenantId === variant.tenantId`. Enforce at database level via composite foreign keys `FOREIGN KEY ("seller_profile_id", "tenant_id") REFERENCES "seller_profiles"("id", "tenant_id")` and unique index `UNIQUE ("seller_profile_id", "product_variant_id")`.
+* **Context:** A seller offering products on the marketplace should not duplicate catalog entities into `MarketplaceProduct` or duplicate inventory pieces into `MarketplaceInventory`. Conflating these leads to desynchronized specifications and orphaned stock. Furthermore, listings must never be permitted to reference products or variants belonging to a different tenant or link a variant to the wrong parent product.
+* **Decision:** Introduce `SellerListing` as a commercial offer entity linking `SellerProfile` to the tenant's existing `Product` and `ProductVariant`. Enforce that `listing.tenantId === seller.tenantId === product.tenantId === variant.tenantId` and `listing.productId === variant.productId`. Enforce at the PostgreSQL schema level via composite foreign keys:
+  - `FOREIGN KEY ("seller_profile_id", "tenant_id") REFERENCES "seller_profiles"("id", "tenant_id")`
+  - `FOREIGN KEY ("product_id", "tenant_id") REFERENCES "products"("id", "tenant_id")`
+  - `FOREIGN KEY ("product_variant_id", "product_id", "tenant_id") REFERENCES "product_variants"("id", "product_id", "tenant_id")`
+  Enforce non-archived listing uniqueness per variant (`UNIQUE ("seller_profile_id", "product_variant_id") WHERE "status" != 'ARCHIVED'` in migration `0010_seller_marketplace_integrity.sql`), allowing merchants to reissue a fresh listing if an earlier listing was archived.
 
 ### ADR-0036: Cascading Seller Suspension and Finite Listing State Machine
 * **Status:** Accepted (Stage 7)
 * **Context:** Sellers may face compliance review or administrative holds. Allowing active listings to remain discoverable or permitting new listings to be activated while a merchant is suspended risks regulatory and financial harm.
-* **Decision:** Implement explicit state machines for `SellerProfile` (`DRAFT`, `ACTIVE`, `SUSPENDED`, `ARCHIVED`) and `SellerListing` (`DRAFT`, `ACTIVE`, `PAUSED`, `ARCHIVED`). Listing activation strictly requires `seller.status === 'ACTIVE'`. Suspending a seller prevents listing activation and suppresses listings from public discovery feeds.
+* **Decision:** Implement explicit state machines for `SellerProfile` (`DRAFT`, `ACTIVE`, `SUSPENDED`, `ARCHIVED`) and `SellerListing` (`DRAFT`, `ACTIVE`, `PAUSED`, `ARCHIVED`). Listing activation strictly requires `seller.status === 'ACTIVE'`. Suspending a seller dynamically suppresses all of their listings from public marketplace feeds (`listPublicListings`) and returns `404 Not Found` on public storefront endpoints (`/marketplace/sellers/:slug`).
 
 ---
 

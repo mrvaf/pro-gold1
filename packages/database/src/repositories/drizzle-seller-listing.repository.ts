@@ -145,6 +145,10 @@ export class DrizzleSellerListingRepository implements SellerListingRepositoryPo
           eq(sellerListingsTable.tenantId, tenantId)
         )
       )
+      .orderBy(
+        sql`CASE WHEN "status" != 'ARCHIVED' THEN 0 ELSE 1 END`,
+        desc(sellerListingsTable.createdAt)
+      )
       .limit(1);
 
     const record = records[0];

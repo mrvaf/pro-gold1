@@ -464,4 +464,143 @@ describe('Stage 7: Marketplace Service, Invariants & Multi-Tenant Isolation', ()
       }
     });
   });
+
+  describe('Suspension Cascading into Public Discovery', () => {
+    it('instantly suppresses active listings from public discovery when seller is suspended or unlisted', async () => {
+      const { service, storeA, productA, variantA } = await createFixtures();
+
+      const seller = (
+        await service.createSellerProfile({
+          tenantId: tenantA,
+          storeId: storeA.id,
+          displayName: 'Alpha Artisan House',
+          slug: 'alpha-artisan-house',
+          initialStatus: 'ACTIVE',
+          isPubliclyVisible: true,
+        })
+      ).unwrap();
+
+      const listing = (
+        await service.createListing({
+          tenantId: tenantA,
+          sellerProfileId: seller.id,
+          productId: productA.id,
+          productVariantId: variantA.id,
+          title: 'Discoverable 18K Ring',
+          initialStatus: 'ACTIVE',
+          visibility: 'PUBLIC',
+        })
+      ).unwrap();
+
+      // 1. Initial State: Seller is ACTIVE, Listing is ACTIVE -> Must be in public feed
+      let publicFeed = await service.listPublicListings();
+      expect(publicFeed.length).toBe(1);
+      expect(publicFeed[0].id).toBe(listing.id);
+
+      // 2. Suspend the seller
+      await service.transitionSellerStatus({
+        id: seller.id,
+        tenantId: tenantA,
+        targetStatus: 'SUSPENDED',
+        reason: 'Compliance audit pending',
+      });
+
+      // Public feed MUST exclude listing even though listing.status is still ACTIVE!
+      publicFeed = await service.listPublicListings();
+      expect(publicFeed.length).toBe(0);
+
+      // Public seller profile MUST return 404
+      const sellerProfileRes = await service.getPublicSellerBySlug('alpha-artisan-house');
+      expect(sellerProfileRes.isErr).toBe(true);
+      if (sellerProfileRes.isErr) {
+        expect(sellerProfileRes.error).toBeInstanceOf(NotFoundError);
+      }
+
+      // 3. Reinstate the seller: Seller becomes ACTIVE again -> Listing is discoverable again!
+      await service.transitionSellerStatus({
+        id: seller.id,
+        tenantId: tenantA,
+        targetStatus: 'ACTIVE',
+      });
+
+      publicFeed = await service.listPublicListings();
+      expect(publicFeed.length).toBe(1);
+      expect(publicFeed[0].id).toBe(listing.id);
+
+      // 4. Seller toggles isPubliclyVisible to false -> Excluded from public discovery
+      await service.updateSellerProfile({
+        id: seller.id,
+        tenantId: tenantA,
+        isPubliclyVisible: false,
+      });
+
+      publicFeed = await service.listPublicListings();
+      expect(publicFeed.length).toBe(0);
+    });
+  });
+
+  describe('Non-Archived Listing Uniqueness Semantics', () => {
+    it('permits creating a new listing for a variant if the previous listing was ARCHIVED', async () => {
+      const { service, storeA, productA, variantA } = await createFixtures();
+
+      const seller = (
+        await service.createSellerProfile({
+          tenantId: tenantA,
+          storeId: storeA.id,
+          displayName: 'Alpha Artisan House',
+          slug: 'alpha-artisan-house',
+          initialStatus: 'ACTIVE',
+        })
+      ).unwrap();
+
+      // 1. Create first listing
+      const firstListing = (
+        await service.createListing({
+          tenantId: tenantA,
+          sellerProfileId: seller.id,
+          productId: productA.id,
+          productVariantId: variantA.id,
+          title: 'First Active Listing',
+          initialStatus: 'ACTIVE',
+        })
+      ).unwrap();
+
+      // 2. Attempt duplicate non-archived listing -> Rejected with ConflictError
+      const duplicateRes = await service.createListing({
+        tenantId: tenantA,
+        sellerProfileId: seller.id,
+        productId: productA.id,
+        productVariantId: variantA.id,
+        title: 'Attempt Duplicate Non-Archived Listing',
+      });
+      expect(duplicateRes.isErr).toBe(true);
+      if (duplicateRes.isErr) {
+        expect(duplicateRes.error).toBeInstanceOf(ConflictError);
+      }
+
+      // 3. Archive the first listing
+      await service.transitionListingStatus({
+        id: firstListing.id,
+        tenantId: tenantA,
+        targetStatus: 'ARCHIVED',
+        reason: 'End of seasonal collection',
+      });
+
+      // 4. Create new listing for the same variant -> SUCCEEDS because old listing is ARCHIVED!
+      const replacementListingRes = await service.createListing({
+        tenantId: tenantA,
+        sellerProfileId: seller.id,
+        productId: productA.id,
+        productVariantId: variantA.id,
+        title: 'Replacement Seasonal Listing',
+        initialStatus: 'ACTIVE',
+      });
+
+      expect(replacementListingRes.isOk).toBe(true);
+      if (replacementListingRes.isOk) {
+        expect(replacementListingRes.value.id).not.toBe(firstListing.id);
+        expect(replacementListingRes.value.status).toBe('ACTIVE');
+      }
+    });
+  });
 });

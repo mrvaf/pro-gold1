@@ -114,12 +114,13 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 * **Status:** **COMPLETE**
 * **Focus:**
   - SellerProfile identity, finite state machine (`DRAFT`, `ACTIVE`, `SUSPENDED`, `ARCHIVED`), and metadata.
-  - Global normalized SellerSlug validation and public storefront presence.
+  - Global normalized SellerSlug validation and public storefront presence (explicit URL architectural assumption).
   - Decoupled SellerListing domain linking Seller to existing Catalog ProductVariant (zero catalog/pricing duplication).
-  - Cross-tenant catalog ownership invariants and database composite foreign keys.
-  - Cascading seller suspension policy preventing unverified/suspended commercial listings.
+  - Cross-tenant catalog ownership invariants and database composite foreign keys `(product_id, tenant_id)` & `(product_variant_id, product_id, tenant_id)`.
+  - Non-archived listing uniqueness semantics via PostgreSQL partial unique index.
+  - Cascading seller suspension policy with instant dynamic public discovery suppression.
   - Public sanitized discovery endpoints stripped of internal tenant/tax data.
-* **Completion Criteria:** 333 tests passing; zero regressions; strict tenant-scoped isolation; sequential migration 0009.
+* **Completion Criteria:** 337 tests passing; zero regressions; strict tenant-scoped isolation; sequential migrations 0009 and 0010.
 
 ---
 

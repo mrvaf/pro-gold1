@@ -74,4 +74,29 @@ describe('Marketplace Database Schema & Migration Invariants', () => {
     expect(sql).toContain('CREATE INDEX IF NOT EXISTS "seller_listings_tenant_status_idx"');
     expect(sql).toContain('CREATE INDEX IF NOT EXISTS "seller_listings_seller_status_idx"');
   });
+
+  it('verifies sequential migration 0010_seller_marketplace_integrity.sql hardening', () => {
+    const migrationPath = path.resolve(
+      __dirname,
+      '../packages/database/src/migrations/0010_seller_marketplace_integrity.sql'
+    );
+    expect(fs.existsSync(migrationPath)).toBe(true);
+
+    const sql = fs.readFileSync(migrationPath, 'utf-8');
+
+    // Composite unique constraints on parent catalog entities
+    expect(sql).toContain('ALTER TABLE "products" ADD CONSTRAINT "products_id_tenant_id_uniq" UNIQUE ("id", "tenant_id")');
+    expect(sql).toContain('ALTER TABLE "product_variants" ADD CONSTRAINT "product_variants_id_product_tenant_uniq" UNIQUE ("id", "product_id", "tenant_id")');
+
+    // Composite foreign keys enforcing multi-tenant catalog ownership
+    expect(sql).toContain('FOREIGN KEY ("product_id", "tenant_id")');
+    expect(sql).toContain('REFERENCES "products"("id", "tenant_id")');
+
+    expect(sql).toContain('FOREIGN KEY ("product_variant_id", "product_id", "tenant_id")');
+    expect(sql).toContain('REFERENCES "product_variants"("id", "product_id", "tenant_id")');
+
+    // Partial unique index for non-archived listings
+    expect(sql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "seller_listings_seller_variant_non_archived_uniq"');
+    expect(sql).toContain('WHERE "status" != \'ARCHIVED\'');
+  });
 });

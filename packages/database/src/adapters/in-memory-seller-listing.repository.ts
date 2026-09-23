@@ -49,16 +49,24 @@ export class InMemorySellerListingRepository implements SellerListingRepositoryP
     variantId: ProductVariantId,
     tenantId: TenantId
   ): Promise<SellerListing | null> {
+    let nonArchived: SellerListing | null = null;
+    let anyMatch: SellerListing | null = null;
+
     for (const listing of this.listings.values()) {
       if (
         listing.tenantId === tenantId &&
         listing.sellerProfileId === sellerProfileId &&
         listing.productVariantId === variantId
       ) {
-        return this.clone(listing);
+        anyMatch = listing;
+        if (listing.status !== 'ARCHIVED') {
+          nonArchived = listing;
+          break;
+        }
       }
     }
-    return null;
+
+    return nonArchived ? this.clone(nonArchived) : anyMatch ? this.clone(anyMatch) : null;
   }
 
   async listBySeller(

@@ -445,7 +445,17 @@ export class SellerMarketplaceService {
   }
 
   async listPublicListings(filter?: PublicListingFilter): Promise<SellerListing[]> {
-    return this.listingRepo.listPublicListings(filter);
+    const rawListings = await this.listingRepo.listPublicListings(filter);
+    const validListings: SellerListing[] = [];
+
+    for (const listing of rawListings) {
+      const seller = await this.sellerRepo.findById(listing.sellerProfileId, listing.tenantId);
+      if (seller && seller.status === 'ACTIVE' && seller.presence.isPubliclyVisible) {
+        validListings.push(listing);
+      }
+    }
+
+    return validListings;
   }
 
   async updateListing(

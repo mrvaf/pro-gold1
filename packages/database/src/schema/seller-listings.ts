@@ -1,4 +1,5 @@
 import { pgTable, varchar, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { tenantsTable } from './tenants.js';
 import { sellerProfilesTable } from './seller-profiles.js';
 import { productsTable } from './products.js';
@@ -34,7 +35,9 @@ export const sellerListingsTable = pgTable(
     updatedByActorId: varchar('updated_by_actor_id', { length: 128 }).notNull().default('system'),
   },
   (table) => [
-    uniqueIndex('seller_listings_seller_variant_uniq').on(table.sellerProfileId, table.productVariantId),
+    uniqueIndex('seller_listings_seller_variant_non_archived_uniq')
+      .on(table.sellerProfileId, table.productVariantId)
+      .where(sql`"status" != 'ARCHIVED'`),
     index('seller_listings_tenant_status_idx').on(table.tenantId, table.status),
     index('seller_listings_seller_status_idx').on(table.sellerProfileId, table.status),
     index('seller_listings_variant_idx').on(table.productVariantId),

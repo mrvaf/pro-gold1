@@ -26,7 +26,7 @@
 | **4.1**| **Financial Precision & Currency Semantics** | **COMPLETE** | 187 passed / 0 skipped / 0 failed | PASS | PASS | Audited precision matrix, audited rounding modes, NUMERIC(32, 16) FX storage, truncation guard, 0004 migration |
 | **5** | **Authoritative Pricing Engine** | **COMPLETE** | 237 passed / 0 skipped / 0 failed | PASS | PASS | Audited reference rule segregation, no silent commercial defaults, carat separation, rule config snapshot, 0005 & 0006 migrations |
 | **6** | **Catalog & Inventory Foundations** | **COMPLETE** | 293 passed / 0 skipped / 0 failed | PASS | PASS | Product/Variant separation, SKU validation & anti-drift derivation, physical weight & carat invariants, finite InventoryStateMachine with IN_TRANSIT workflow, append-only movements, Unit of Work atomicity, store/tenant composite isolation, 0007 & 0008 migrations |
-| **7** | **Seller Marketplace Foundation** | **COMPLETE** | **333 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | SellerProfile identity & finite lifecycle, global slug uniqueness & normalization, SellerListing decoupled from physical inventory, cross-tenant catalog ownership invariants, cascading suspension, public sanitized discovery endpoints, 0009 migration |
+| **7** | **Seller Marketplace Foundation** | **COMPLETE** | **337 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | SellerProfile identity & finite lifecycle, global slug uniqueness & normalization (architectural URL decision), SellerListing decoupled from physical inventory, composite database FKs (tenant + product variant consistency), cascading suspension with instant public discovery suppression, non-archived listing uniqueness semantics, 0009 & 0010 migrations |
 | 8 | Seller OS | PENDING | — | — | — | Awaiting user command |
 | 9 | AI Conversational Designer | PENDING | — | — | — | |
 | 10| AI Concept Generation | PENDING | — | — | — | |
@@ -54,18 +54,20 @@
 ```text
 ========================================================================
 Stage 7: Seller Marketplace Foundation Gate Summary
-- Total Tests:               333 passed / 0 skipped / 0 failed (60 test files)
-- Baseline Preservation:     100% (All 293 Stage 6 tests + 40 new Stage 7 tests)
+- Total Tests:               337 passed / 0 skipped / 0 failed (60 test files)
+- Baseline Preservation:     100% (All 293 Stage 6 tests + 44 new Stage 7 tests)
 - TypeScript Strict Check:   PASS (0 errors across core, database, ai-gateway, web, tests)
 - Next.js Production Build:  PASS (21 routes compiled with zero errors)
 - Seller Identity:           PASS (SellerProfile, finite lifecycle: DRAFT, ACTIVE, SUSPENDED, ARCHIVED)
-- Public Presence:           PASS (SellerSlug normalized, global collision prevention, bio/branding)
+- Public Presence:           PASS (SellerSlug normalized, global collision prevention, explicit URL assumption)
 - Catalog Listing Coupling:  PASS (SellerListing decoupled from physical inventory; links to ProductVariant)
 - Cross-Tenant Invariants:   PASS (Store ownership verified, Product/Variant cross-tenant strictly blocked)
-- Cascading Suspension:      PASS (Suspended seller suppresses public discovery and blocks listing activation)
+- DB Composite Integrity:    PASS (Composite FKs: listing->product(id, tenant), listing->variant(id, product, tenant))
+- Listing Uniqueness:        PASS (Partial unique index on non-archived listings: status != 'ARCHIVED')
+- Cascading Suspension:      PASS (Suspended seller dynamically suppresses listings from public discovery)
 - Public API Sanitization:   PASS (Strips tenantId, taxId, business registration, internal store links)
 - IDOR / Tenant Isolation:   PASS (Verified across Seller Profiles and Seller Listings)
-- Migrations:                0009_seller_marketplace_foundation.sql (Sequential, additive, reviewable)
+- Migrations:                0009_seller_marketplace_foundation.sql & 0010_seller_marketplace_integrity.sql (Sequential, additive, reviewable)
 - PostgreSQL Integration:    POSTGRESQL INTEGRATION: NOT AVAILABLE (Sandbox has no pg service; schema & in-memory verified)
 ========================================================================
 ```
