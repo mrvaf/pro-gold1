@@ -27,18 +27,20 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 2 — Domain Models & Database Foundations
-* **Status:** **PENDING** (Awaiting explicit user command)
+* **Status:** **COMPLETE**
 * **Focus:**
-  - Core domain entities: `User`, `Store`, `Product`, `InventoryItem`.
-  - Value objects: `Money` (Decimal.js), `Weight` (Decimal.js), `Purity` (Karat/Fineness).
-  - PostgreSQL schema and initial DDL migration `0001_core.sql` via Drizzle ORM.
-  - In-memory and PostgreSQL repository ports.
-* **Completion Criteria:** Domain tests verify invariants; migration executes cleanly; zero floating point in domain.
+  - Core domain entities: `Tenant` (TenantId), `Store` (StoreId).
+  - Value objects: `Money` (Decimal.js, strict arithmetic, currency parity), `Currency` (`IRR`, `TOMAN`, `USD`, `EUR`), `GoldPurity` (Karat/Fineness), `Weight` (canonical grams, mesghal, carats, ounces), `ActorReference`, `AuditMetadata`, `JewelryIdentity`.
+  - PostgreSQL schema and initial DDL migration `0001_core_foundation.sql` via Drizzle ORM.
+  - Repository ports: `TenantRepositoryPort`, `StoreRepositoryPort`.
+  - Drizzle repositories (`DrizzleTenantRepository`, `DrizzleStoreRepository`) with record-to-entity mappers.
+  - In-memory repository adapters (`InMemoryTenantRepository`, `InMemoryStoreRepository`) enforcing tenant isolation.
+* **Completion Gate:** 56 passed / 0 skipped / 0 failed, 0 type errors, clean build, clean DDL verification.
 
 ---
 
 ### Stage 3 — IAM & Multi-Tenant Isolation
-* **Status:** **PENDING**
+* **Status:** **PENDING** (Awaiting explicit user command)
 * **Focus:**
   - Secure session management (HttpOnly, Secure, SameSite).
   - RBAC: Customer, Seller, Goldsmith, Platform Admin.

@@ -30,14 +30,15 @@ No stage begins without an explicit prompt from the user following verification 
 
 ---
 
-## 3. Technology Stack (Stage 1 Implemented)
+## 3. Technology Stack (Stage 2 Implemented)
 
 * **Runtime:** Node.js 20+ (Target: Node.js 22 LTS compatibility)
 * **Language:** TypeScript 5.7.x (Strict mode enabled)
 * **Framework:** Next.js 15.5.x (App Router), React 19
 * **Monorepo Engine:** npm Workspaces
-* **Testing:** Vitest 3.x (Unit, Integration, Architecture Boundaries)
-* **Financial Precision:** Decimal.js 10.4.x
+* **Persistence:** PostgreSQL DDL Migrations & Drizzle ORM 0.39.x (Database infrastructure decoupled from domain)
+* **Testing:** Vitest 3.x (Unit, Integration, Architecture Boundaries, Schema & Migrations)
+* **Financial & Mass Precision:** Decimal.js 10.4.x
 * **Internationalization:** Persian (`fa-IR`, RTL default) & English (`en-US`, LTR)
 
 ---
@@ -48,10 +49,23 @@ No stage begins without an explicit prompt from the user following verification 
 ├── apps/
 │   └── web/                   # Next.js 15 App Router frontend & /api/health endpoint
 ├── packages/
-│   ├── core/                  # Pure Domain primitives (Result, Entity, ValueObject, DomainError, Ports)
-│   ├── database/              # DB infrastructure (Config, InMemoryRepository, InMemoryTenantScopedRepository)
+│   ├── core/                  # Pure Domain foundation (no framework or DB dependencies)
+│   │   ├── src/common/        # Result, Entity, ValueObject, EntityId, DomainError
+│   │   ├── src/domain/        # Foundational Domain Concepts (Stage 2):
+│   │   │   ├── finance/       # Currency, Money (Decimal.js, strict arithmetic, currency parity)
+│   │   │   ├── material/      # GoldPurity (Karat/Fineness), Weight (canonical grams, mesghal, carats)
+│   │   │   ├── tenant/        # Tenant, Store entities
+│   │   │   ├── identity/      # ActorReference
+│   │   │   ├── audit/         # AuditMetadata
+│   │   │   └── product/       # JewelryIdentity
+│   │   └── src/ports/         # RepositoryPort, TenantRepositoryPort, StoreRepositoryPort, AiGatewayPort
+│   ├── database/              # DB infrastructure & Drizzle ORM
+│   │   ├── src/schema/        # Drizzle tables (tenantsTable, storesTable)
+│   │   ├── src/migrations/    # Numbered DDL migrations (0001_core_foundation.sql)
+│   │   ├── src/repositories/  # DrizzleTenantRepository, DrizzleStoreRepository
+│   │   └── src/adapters/      # InMemoryTenantRepository, InMemoryStoreRepository
 │   └── ai-gateway/            # AI Gateway abstraction (AiGatewayClient, MockAdapter, UnavailableAdapter)
-├── tests/                     # Architecture & boundary tests (Vitest)
+├── tests/                     # 11 Vitest test suites (56 tests passed)
 ├── ARCHITECTURE.md            # Comprehensive architecture documentation & ADRs
 ├── PROJECT_STATE.md           # Current execution status & verification gates
 └── ROADMAP.md                 # 26-Stage execution roadmap
@@ -61,16 +75,16 @@ No stage begins without an explicit prompt from the user following verification 
 
 ## 5. Current Status
 
-* **Current Stage:** **Stage 1 (Architecture & Monorepo Foundation)**
+* **Current Stage:** **Stage 2 (Domain Models & Database Foundations)**
 * **Status:** **COMPLETE**
-* **Next Stage:** **Stage 2 (Domain Models & Database Foundations)** — *Awaiting user prompt.*
+* **Next Stage:** **Stage 3 (IAM & Multi-Tenancy)** — *Awaiting user prompt.*
 
 ---
 
 ## 6. Verified Quality Commands
 
 ```bash
-# Run full Vitest test suite (16 tests passed across 3 test suites)
+# Run full Vitest test suite (56 tests passed across 11 test suites)
 npm test
 
 # Run strict TypeScript typecheck across all workspaces and tests

@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.1.0`
-* **Current Stage:** **Stage 1 — Architecture & Monorepo Foundation**
+* **Project Version:** `0.2.0-alpha`
+* **Current Stage:** **Stage 2 — Domain Models & Database Foundations**
 * **Stage Status:** **COMPLETE**
 * **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_01_COMPLETE`
-* **Next Target Stage:** **Stage 2 — Domain Models & Database Foundations**
+* **Last Verified Snapshot:** `V-GOLD_STAGE_02_COMPLETE`
+* **Next Target Stage:** **Stage 3 — IAM & Multi-Tenancy**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -19,9 +19,9 @@
 | Stage | Name | Status | Verified Tests | Typecheck | Build | Notes |
 | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
 | **0** | **Discovery & Foundational Architecture** | **COMPLETE** | N/A (Audit & Docs) | PASS | PASS | Baseline established; ADRs defined |
-| **1** | **Architecture & Monorepo Foundation** | **COMPLETE** | **16 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | npm workspaces, @v-gold/core, @v-gold/database, @v-gold/ai-gateway, apps/web, Vitest |
-| 2 | Domain Models & Database Foundations | PENDING | — | — | — | Awaiting user command |
-| 3 | IAM & Multi-Tenancy | PENDING | — | — | — | |
+| **1** | **Architecture & Monorepo Foundation** | **COMPLETE** | 16 passed / 0 skipped / 0 failed | PASS | PASS | Workspaces, boundary AST tests, Next.js web |
+| **2** | **Domain Models & Database Foundations** | **COMPLETE** | **56 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Money, GoldPurity, Weight, Tenant, Store, Drizzle ORM, 0001 migration |
+| 3 | IAM & Multi-Tenancy | PENDING | — | — | — | Awaiting user command |
 | 4 | Market Data Infrastructure | PENDING | — | — | — | |
 | 4.1| Precision & Currency Semantics | PENDING | — | — | — | |
 | 5 | Authoritative Pricing Engine | PENDING | — | — | — | |
@@ -49,82 +49,71 @@
 
 ---
 
-## Stage 1 Completion Gate Audit
+## Stage 2 Completion Gate Audit
 
 | Gate Item | Target Standard | Measured Result | Status |
 | :--- | :--- | :--- | :---: |
-| **Monorepo Structure** | `apps/web`, `packages/core`, `packages/database`, `packages/ai-gateway` | Present, configured via npm workspaces | **PASS** |
-| **Boundary Isolation** | `@v-gold/core` independent from React, Next, DB, AI SDKs | Verified via AST scan in `tests/architecture.test.ts` | **PASS** |
-| **AI Gateway Port** | Abstraction with truthful 503 fallback and mock adapter | Verified in `tests/foundation-boundaries.test.ts` | **PASS** |
-| **Tenant Isolation Port**| Scoped repository enforcing `storeId` boundaries | Verified in `tests/foundation-boundaries.test.ts` | **PASS** |
-| **Web Entrypoint** | Next.js 15 App Router + React 19 + `/api/health` handler | Verified in `tests/web-entrypoint.test.ts` | **PASS** |
-| **Test Suite** | Vitest suite executes reliably | **16 passed / 0 skipped / 0 failed** | **PASS** |
+| **Domain Foundation** | `Tenant`, `Store`, `Money`, `Currency`, `GoldPurity`, `Weight`, `ActorReference`, `AuditMetadata`, `JewelryIdentity` | Fully implemented in `@v-gold/core` | **PASS** |
+| **Financial Precision** | Decimal.js only; zero float math; explicit rounding | Tested in `tests/money.test.ts` | **PASS** |
+| **Gold Purity & Fineness** | Millesimal fineness (0-1000) & Karats (1-24); exact gold fraction | Tested in `tests/gold-purity.test.ts` | **PASS** |
+| **Mass Canonical Unit** | Grams (g) canonical; milligrams, carats, mesghal, ounces conversions | Tested in `tests/weight.test.ts` | **PASS** |
+| **Tenant Isolation Invariant** | Tenant ownership explicit; Store strictly bound to Tenant; cross-tenant query impossible | Tested in `tests/tenant-isolation.test.ts` | **PASS** |
+| **Database Schema** | Drizzle ORM tables for `tenants` and `stores` with PK, FK cascade, unique index | Tested in `tests/database-schema.test.ts` | **PASS** |
+| **DDL Migration** | Sequentially numbered `0001_core_foundation.sql` (idempotent, reviewable DDL) | Tested in `tests/database-migration.test.ts` | **PASS** |
+| **Repository Mappers** | Domain entities <-> Database records mapped without leaking Drizzle types | Tested in `tests/repository-mapping.test.ts` | **PASS** |
+| **Boundary Isolation** | `@v-gold/core` has ZERO database or framework imports | Verified by AST scan in `tests/architecture.test.ts` | **PASS** |
+| **Test Suite** | Vitest monorepo suite executes reliably | **56 passed / 0 skipped / 0 failed** (11 test files) | **PASS** |
 | **Typecheck** | TypeScript 5.7+ strict check across all workspaces & tests | **0 errors** | **PASS** |
-| **Production Build** | `npm run build` compiles packages and Next.js app | **Clean build** | **PASS** |
-| **Stage Confinement** | Zero implementation of Stage 2+ features | Strictly foundation only | **PASS** |
+| **Production Build** | `npm run build` compiles all packages and Next.js web app | **Clean build** | **PASS** |
+| **PostgreSQL Integration** | Real database availability check | **NOT AVAILABLE** (PSQL daemon not installed in container; schema & migrations verified statically/deterministically) | **REPORTED** |
+| **Stage Confinement** | Zero implementation of Stage 3+ features | Strictly foundation only | **PASS** |
 
 ---
 
-## File System Inventory (Stage 1 Implemented)
+## File System Inventory (Stage 2 Additions)
 
 ```text
-├── package.json
-├── package-lock.json
-├── tsconfig.base.json
-├── vitest.config.ts
-├── .gitignore
-├── README.md
-├── ARCHITECTURE.md
-├── PROJECT_STATE.md
-├── ROADMAP.md
-├── apps/
-│   └── web/
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── next.config.ts
-│       └── app/
-│           ├── layout.tsx
-│           ├── page.tsx
-│           └── api/health/route.ts
-├── packages/
-│   ├── core/
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   ├── tsconfig.build.json
-│   │   └── src/
-│   │       ├── index.ts
-│   │       ├── common/
-│   │       │   ├── result.ts
-│   │       │   ├── id.ts
-│   │       │   ├── entity.ts
-│   │       │   ├── value-object.ts
-│   │       │   └── errors.ts
-│   │       └── ports/
-│   │           ├── repository.port.ts
-│   │           └── ai-gateway.port.ts
-│   ├── database/
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   ├── tsconfig.build.json
-│   │   └── src/
-│   │       ├── index.ts
-│   │       ├── config.ts
-│   │       └── in-memory-store.ts
-│   └── ai-gateway/
-│       ├── package.json
-│       ├── tsconfig.json
-│       ├── tsconfig.build.json
-│       └── src/
-│           ├── index.ts
-│           ├── client.ts
-│           └── adapters/
-│               ├── mock-adapter.ts
-│               └── unavailable-adapter.ts
-└── tests/
-    ├── tsconfig.json
-    ├── architecture.test.ts
-    ├── foundation-boundaries.test.ts
-    └── web-entrypoint.test.ts
+packages/core/src/domain/
+├── finance/
+│   ├── currency.ts
+│   └── money.ts
+├── material/
+│   ├── gold-purity.ts
+│   └── weight.ts
+├── tenant/
+│   ├── tenant.ts
+│   └── store.ts
+├── identity/
+│   └── actor-reference.ts
+├── audit/
+│   └── audit-metadata.ts
+└── product/
+    └── jewelry-identity.ts
+packages/core/src/ports/
+├── tenant.repository.port.ts
+└── store.repository.port.ts
+packages/database/src/
+├── schema/
+│   ├── index.ts
+│   ├── tenants.ts
+│   └── stores.ts
+├── migrations/
+│   └── 0001_core_foundation.sql
+├── repositories/
+│   ├── drizzle-tenant.repository.ts
+│   └── drizzle-store.repository.ts
+└── adapters/
+    ├── in-memory-tenant.repository.ts
+    └── in-memory-store.repository.ts
+tests/
+├── money.test.ts
+├── gold-purity.test.ts
+├── weight.test.ts
+├── tenant-domain.test.ts
+├── tenant-isolation.test.ts
+├── database-schema.test.ts
+├── database-migration.test.ts
+└── repository-mapping.test.ts
 ```
 
 ---
@@ -135,5 +124,5 @@
 * [x] No client-side authoritative pricing permitted.
 * [x] No secrets committed to source.
 * [x] No fake features or stubbed production claims.
-* [x] Exactly Stage 1 completed.
-* [x] Engine stopped awaiting user authorization for Stage 2.
+* [x] Exactly Stage 2 completed.
+* [x] Engine stopped awaiting user authorization for Stage 3.

@@ -2,7 +2,7 @@
  * Base class for all Domain Value Objects.
  * Value objects are immutable and defined by their structural properties.
  */
-export abstract class ValueObject<TProps extends Record<string, unknown>> {
+export abstract class ValueObject<TProps extends object> {
   protected readonly props: Readonly<TProps>;
 
   constructor(props: TProps) {

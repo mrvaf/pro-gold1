@@ -13,36 +13,36 @@ export abstract class DomainError extends Error {
 }
 
 export class ValidationError extends DomainError {
-  readonly code = 'VALIDATION_ERROR';
+  readonly code: string = 'VALIDATION_ERROR';
   readonly httpStatus = 400;
 }
 
 export class UnauthorizedError extends DomainError {
-  readonly code = 'UNAUTHORIZED';
+  readonly code: string = 'UNAUTHORIZED';
   readonly httpStatus = 401;
 }
 
 export class ForbiddenError extends DomainError {
-  readonly code = 'FORBIDDEN';
+  readonly code: string = 'FORBIDDEN';
   readonly httpStatus = 403;
 }
 
 export class NotFoundError extends DomainError {
-  readonly code = 'NOT_FOUND';
+  readonly code: string = 'NOT_FOUND';
   readonly httpStatus = 404;
 }
 
 export class ConflictError extends DomainError {
-  readonly code = 'CONFLICT';
+  readonly code: string = 'CONFLICT';
   readonly httpStatus = 409;
 }
 
 export class BusinessRuleViolationError extends DomainError {
-  readonly code = 'UNPROCESSABLE_ENTITY';
+  readonly code: string = 'UNPROCESSABLE_ENTITY';
   readonly httpStatus = 422;
 }
 
 export class AiProviderUnavailableError extends DomainError {
-  readonly code = 'AI_PROVIDER_UNAVAILABLE';
+  readonly code: string = 'AI_PROVIDER_UNAVAILABLE';
   readonly httpStatus = 503;
 }
