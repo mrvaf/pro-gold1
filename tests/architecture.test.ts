@@ -44,6 +44,26 @@ describe('Architecture & Monorepo Boundaries', () => {
     }
   });
 
+  it('ensures @v-gold/core has ZERO imports of HTTP/cookie/browser server APIs', () => {
+    const coreFiles = getAllFiles(coreSrcDir);
+    const forbiddenPatterns = [
+      /from ['"]next\/server['"]/,
+      /from ['"]next\/headers['"]/,
+      /from ['"]cookies-next['"]/,
+      /from ['"]cookie['"]/,
+    ];
+
+    for (const file of coreFiles) {
+      const content = fs.readFileSync(file, 'utf-8');
+      for (const pattern of forbiddenPatterns) {
+        expect(
+          pattern.test(content),
+          `Core file ${path.relative(rootDir, file)} must not import HTTP/cookie APIs (matched ${pattern})`
+        ).toBe(false);
+      }
+    }
+  });
+
   it('ensures @v-gold/core has ZERO imports of database drivers or ORMs (Drizzle, PG, SQLite)', () => {
     const coreFiles = getAllFiles(coreSrcDir);
     const forbiddenPatterns = [

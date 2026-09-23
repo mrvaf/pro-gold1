@@ -14,4 +14,13 @@ export class InMemoryStoreRepository
   async findAllByTenant(tenantId: TenantId): Promise<readonly Store[]> {
     return this.findAll(tenantId);
   }
+
+  override async save(tenantId: TenantId, store: Store): Promise<void> {
+    if (store.tenantId !== tenantId) {
+      throw new Error(
+        `Tenant mismatch: Store tenantId (${store.tenantId}) does not match required tenantId (${tenantId})`
+      );
+    }
+    await super.save(tenantId, store);
+  }
 }

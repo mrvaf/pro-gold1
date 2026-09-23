@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.2.0-alpha`
-* **Current Stage:** **Stage 2 — Domain Models & Database Foundations**
+* **Project Version:** `0.3.0-alpha`
+* **Current Stage:** **Stage 3 — IAM & Multi-Tenancy**
 * **Stage Status:** **COMPLETE**
 * **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_02_COMPLETE`
-* **Next Target Stage:** **Stage 3 — IAM & Multi-Tenancy**
+* **Last Verified Snapshot:** `V-GOLD_STAGE_03_COMPLETE`
+* **Next Target Stage:** **Stage 4 — Market Data Infrastructure**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -20,9 +20,9 @@
 | :---: | :--- | :---: | :---: | :---: | :---: | :--- |
 | **0** | **Discovery & Foundational Architecture** | **COMPLETE** | N/A (Audit & Docs) | PASS | PASS | Baseline established; ADRs defined |
 | **1** | **Architecture & Monorepo Foundation** | **COMPLETE** | 16 passed / 0 skipped / 0 failed | PASS | PASS | Workspaces, boundary AST tests, Next.js web |
-| **2** | **Domain Models & Database Foundations** | **COMPLETE** | **56 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Money, GoldPurity, Weight, Tenant, Store, Drizzle ORM, 0001 migration |
-| 3 | IAM & Multi-Tenancy | PENDING | — | — | — | Awaiting user command |
-| 4 | Market Data Infrastructure | PENDING | — | — | — | |
+| **2** | **Domain Models & Database Foundations** | **COMPLETE** | 56 passed / 0 skipped / 0 failed | PASS | PASS | Money, GoldPurity, Weight, Tenant, Store, Drizzle ORM, 0001 migration |
+| **3** | **IAM & Multi-Tenancy** | **COMPLETE** | **90 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | User, Email, PasswordHash, TenantMembership, Session, Scrypt, HttpOnly cookies, 0002 migration |
+| 4 | Market Data Infrastructure | PENDING | — | — | — | Awaiting user command |
 | 4.1| Precision & Currency Semantics | PENDING | — | — | — | |
 | 5 | Authoritative Pricing Engine | PENDING | — | — | — | |
 | 6 | Catalog & Inventory Foundations | PENDING | — | — | — | |
@@ -49,71 +49,81 @@
 
 ---
 
-## Stage 2 Completion Gate Audit
+## Stage 3 Completion Gate Audit
 
 | Gate Item | Target Standard | Measured Result | Status |
 | :--- | :--- | :--- | :---: |
-| **Domain Foundation** | `Tenant`, `Store`, `Money`, `Currency`, `GoldPurity`, `Weight`, `ActorReference`, `AuditMetadata`, `JewelryIdentity` | Fully implemented in `@v-gold/core` | **PASS** |
-| **Financial Precision** | Decimal.js only; zero float math; explicit rounding | Tested in `tests/money.test.ts` | **PASS** |
-| **Gold Purity & Fineness** | Millesimal fineness (0-1000) & Karats (1-24); exact gold fraction | Tested in `tests/gold-purity.test.ts` | **PASS** |
-| **Mass Canonical Unit** | Grams (g) canonical; milligrams, carats, mesghal, ounces conversions | Tested in `tests/weight.test.ts` | **PASS** |
-| **Tenant Isolation Invariant** | Tenant ownership explicit; Store strictly bound to Tenant; cross-tenant query impossible | Tested in `tests/tenant-isolation.test.ts` | **PASS** |
-| **Database Schema** | Drizzle ORM tables for `tenants` and `stores` with PK, FK cascade, unique index | Tested in `tests/database-schema.test.ts` | **PASS** |
-| **DDL Migration** | Sequentially numbered `0001_core_foundation.sql` (idempotent, reviewable DDL) | Tested in `tests/database-migration.test.ts` | **PASS** |
-| **Repository Mappers** | Domain entities <-> Database records mapped without leaking Drizzle types | Tested in `tests/repository-mapping.test.ts` | **PASS** |
-| **Boundary Isolation** | `@v-gold/core` has ZERO database or framework imports | Verified by AST scan in `tests/architecture.test.ts` | **PASS** |
-| **Test Suite** | Vitest monorepo suite executes reliably | **56 passed / 0 skipped / 0 failed** (11 test files) | **PASS** |
+| **Domain Foundation** | `User`, `Email`, `PasswordHash`, `TenantMembership`, `Session`, `AuthorizationService` | Implemented in `@v-gold/core` | **PASS** |
+| **Password Security** | Scrypt memory-hard KDF + 16-byte random salt + `timingSafeEqual` | Tested in `tests/password-security.test.ts` | **PASS** |
+| **Credential Non-Exposure** | Password hash strictly omitted from DTOs and API responses | Tested in `tests/user-domain.test.ts` & `tests/api-auth.test.ts` | **PASS** |
+| **Session Security** | 64-char crypto tokens; HttpOnly, SameSite=Lax, Secure cookies; no localStorage | Tested in `tests/session.test.ts` & `tests/api-auth.test.ts` | **PASS** |
+| **Session Revocation** | Explicit revocation on logout immediately invalidates session | Tested in `tests/session.test.ts` & `tests/api-auth.test.ts` | **PASS** |
+| **Tenant Membership** | User must hold active membership in tenant to obtain permissions | Tested in `tests/authorization.test.ts` | **PASS** |
+| **IDOR Prevention** | Cross-tenant queries and mutations denied regardless of supplied IDs | Tested in `tests/idor-security.test.ts` | **PASS** |
+| **Database Schema** | Drizzle schemas for `users`, `tenant_memberships`, `sessions` with FK cascade and unique indexes | Tested in `tests/database-schema-iam.test.ts` | **PASS** |
+| **DDL Migration** | Sequentially numbered `0002_iam_foundation.sql` (idempotent, reviewable DDL) | Tested in `tests/database-migration-iam.test.ts` | **PASS** |
+| **API Endpoints** | `/api/v1/auth/register`, `/login`, `/logout`, `/me` with Zod validation | Implemented and verified in `apps/web` | **PASS** |
+| **Boundary Isolation** | `@v-gold/core` has ZERO database, framework, HTTP, or cookie imports | Verified by AST scan in `tests/architecture.test.ts` | **PASS** |
+| **Test Suite** | Vitest monorepo suite executes reliably | **90 passed / 0 skipped / 0 failed** (20 test files) | **PASS** |
 | **Typecheck** | TypeScript 5.7+ strict check across all workspaces & tests | **0 errors** | **PASS** |
-| **Production Build** | `npm run build` compiles all packages and Next.js web app | **Clean build** | **PASS** |
-| **PostgreSQL Integration** | Real database availability check | **NOT AVAILABLE** (PSQL daemon not installed in container; schema & migrations verified statically/deterministically) | **REPORTED** |
-| **Stage Confinement** | Zero implementation of Stage 3+ features | Strictly foundation only | **PASS** |
+| **Production Build** | `npm run build` compiles all packages and Next.js web app (7 routes) | **Clean build** | **PASS** |
+| **PostgreSQL Integration** | Real database availability check | **NOT AVAILABLE** (PSQL daemon not in sandbox; verified deterministically) | **REPORTED** |
+| **Stage Confinement** | Zero implementation of Stage 4+ features | Strictly IAM & Multi-Tenancy only | **PASS** |
 
 ---
 
-## File System Inventory (Stage 2 Additions)
+## File System Inventory (Stage 3 Additions)
 
 ```text
-packages/core/src/domain/
-├── finance/
-│   ├── currency.ts
-│   └── money.ts
-├── material/
-│   ├── gold-purity.ts
-│   └── weight.ts
-├── tenant/
-│   ├── tenant.ts
-│   └── store.ts
-├── identity/
-│   └── actor-reference.ts
-├── audit/
-│   └── audit-metadata.ts
-└── product/
-    └── jewelry-identity.ts
+packages/core/src/domain/iam/
+├── email.ts
+├── password-hash.ts
+├── user.ts
+├── permissions.ts
+├── tenant-membership.ts
+├── session.ts
+└── authorization.service.ts
 packages/core/src/ports/
-├── tenant.repository.port.ts
-└── store.repository.port.ts
+├── user.repository.port.ts
+├── tenant-membership.repository.port.ts
+├── session.repository.port.ts
+└── password-hasher.port.ts
 packages/database/src/
 ├── schema/
-│   ├── index.ts
-│   ├── tenants.ts
-│   └── stores.ts
+│   ├── users.ts
+│   ├── tenant-memberships.ts
+│   └── sessions.ts
 ├── migrations/
-│   └── 0001_core_foundation.sql
+│   └── 0002_iam_foundation.sql
 ├── repositories/
-│   ├── drizzle-tenant.repository.ts
-│   └── drizzle-store.repository.ts
-└── adapters/
-    ├── in-memory-tenant.repository.ts
-    └── in-memory-store.repository.ts
+│   ├── drizzle-user.repository.ts
+│   ├── drizzle-tenant-membership.repository.ts
+│   └── drizzle-session.repository.ts
+├── adapters/
+│   ├── in-memory-user.repository.ts
+│   ├── in-memory-tenant-membership.repository.ts
+│   └── in-memory-session.repository.ts
+└── security/
+    └── scrypt-password-hasher.ts
+apps/web/
+├── lib/auth/
+│   ├── auth.service.ts
+│   └── session-cookie.ts
+└── app/api/v1/auth/
+    ├── register/route.ts
+    ├── login/route.ts
+    ├── logout/route.ts
+    └── me/route.ts
 tests/
-├── money.test.ts
-├── gold-purity.test.ts
-├── weight.test.ts
-├── tenant-domain.test.ts
-├── tenant-isolation.test.ts
-├── database-schema.test.ts
-├── database-migration.test.ts
-└── repository-mapping.test.ts
+├── user-domain.test.ts
+├── password-security.test.ts
+├── session.test.ts
+├── authorization.test.ts
+├── tenant-membership.test.ts
+├── api-auth.test.ts
+├── idor-security.test.ts
+├── database-schema-iam.test.ts
+└── database-migration-iam.test.ts
 ```
 
 ---
@@ -124,5 +134,5 @@ tests/
 * [x] No client-side authoritative pricing permitted.
 * [x] No secrets committed to source.
 * [x] No fake features or stubbed production claims.
-* [x] Exactly Stage 2 completed.
-* [x] Engine stopped awaiting user authorization for Stage 3.
+* [x] Exactly Stage 3 completed.
+* [x] Engine stopped awaiting user authorization for Stage 4.

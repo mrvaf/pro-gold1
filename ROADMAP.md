@@ -39,19 +39,21 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 
 ---
 
-### Stage 3 — IAM & Multi-Tenant Isolation
-* **Status:** **PENDING** (Awaiting explicit user command)
+### Stage 3 — IAM & Multi-Tenancy
+* **Status:** **COMPLETE**
 * **Focus:**
-  - Secure session management (HttpOnly, Secure, SameSite).
-  - RBAC: Customer, Seller, Goldsmith, Platform Admin.
-  - Multi-tenant boundary enforcement (`storeId` context in repositories).
-  - Password hashing (Argon2id/Bcrypt) and tenant leakage test suite.
-* **Completion Criteria:** Cross-tenant access proven impossible by automated test suite.
+  - Domain entities & value objects: `User`, `UserId`, `Email`, `PasswordHash`, `TenantMembership`, `Session`, `AuthorizationService`.
+  - Password security: `ScryptPasswordHasher` (memory-hard KDF, 16-byte random salt, timing-safe equality, strict password policy).
+  - Server-side sessions: Cryptographically random 64-character tokens, HttpOnly/SameSite/Secure cookies, zero client-side token storage, immediate server revocation on logout.
+  - Authorization: Explicit role-to-permission resolution (`OWNER`, `ADMIN`, `MEMBER`), centralized server-side evaluation, IDOR protection.
+  - PostgreSQL schema & numbered migration `0002_iam_foundation.sql` (`users`, `tenant_memberships`, `sessions` tables).
+  - API endpoints: `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/logout`, `/api/v1/auth/me` with Zod validation.
+* **Completion Gate:** 90 passed / 0 skipped / 0 failed across 20 test files, 0 typecheck errors, clean Next.js production build.
 
 ---
 
 ### Stage 4 — Market Data Infrastructure
-* **Status:** **PENDING**
+* **Status:** **PENDING** (Awaiting explicit user command)
 * **Focus:**
   - Gold spot rate feeds (18K, 24K, Mesghal, Ounce, Coin rates).
   - Provider abstraction port (`GoldRateProviderPort`).
