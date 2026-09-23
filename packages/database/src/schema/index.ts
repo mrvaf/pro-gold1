@@ -9,3 +9,8 @@ export * from './market-observations.js';
 export * from './fx-rates.js';
 export * from './pricing-rules.js';
 export * from './pricing-results.js';
+export * from './products.js';
+export * from './product-variants.js';
+export * from './inventory-locations.js';
+export * from './inventory-items.js';
+export * from './inventory-movements.js';

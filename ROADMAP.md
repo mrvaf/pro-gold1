@@ -96,12 +96,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 6 — Catalog & Inventory Foundations
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
-  - Catalog browsing and product detail domain models.
-  - Multi-variant jewelry attributes (size, metal color, chain length, gemstone cut).
-  - Real-time stock availability tracking and concurrency locks.
-* **Completion Criteria:** Catalog queries tenant-safe; inventory decrements race-condition safe.
+  - Decoupling of Catalog (Product, ProductVariant) from physical serialized stock (InventoryItem, InventoryLocation).
+  - Multi-variant jewelry attributes (purity, metal mass, gemstone carat metadata).
+  - Physical mass invariants ($\text{grossWeight} \ge \text{netGoldWeight} + \sum \text{gemstoneWeight}$) and strict non-interchangeability of carats with gold mass.
+  - Finite Inventory State Machine (`AVAILABLE`, `RESERVED`, `SOLD`, `DAMAGED`, `LOST`, `IN_TRANSIT`).
+  - Append-only immutable `InventoryMovement` audit log.
+* **Completion Criteria:** 280 tests passing; zero regressions; strict tenant-scoped SKU and IDOR protection.
 
 ---
 

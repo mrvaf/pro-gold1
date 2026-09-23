@@ -64,3 +64,24 @@ export * from './domain/pricing/pricing-result.js';
 export * from './domain/pricing/pricing-engine.js';
 export * from './ports/pricing-rule.repository.port.js';
 export * from './ports/pricing-result.repository.port.js';
+
+// Catalog Foundations (Stage 6)
+export * from './domain/catalog/sku.js';
+export * from './domain/catalog/gemstone-specification.js';
+export * from './domain/catalog/material-specification.js';
+export * from './domain/catalog/jewelry-specification.js';
+export * from './domain/catalog/product.js';
+export * from './domain/catalog/product-variant.js';
+export * from './domain/catalog/catalog-errors.js';
+export * from './ports/product.repository.port.js';
+export * from './ports/product-variant.repository.port.js';
+
+// Inventory Foundations (Stage 6)
+export * from './domain/inventory/inventory-location.js';
+export * from './domain/inventory/inventory-status.js';
+export * from './domain/inventory/inventory-movement.js';
+export * from './domain/inventory/inventory-item.js';
+export * from './domain/inventory/inventory-errors.js';
+export * from './ports/inventory-location.repository.port.js';
+export * from './ports/inventory-item.repository.port.js';
+export * from './ports/inventory-movement.repository.port.js';

@@ -246,16 +246,56 @@ PricingBreakdown
 
 ---
 
-## 7. Architectural Decision Records (ADRs)
+## 7. Catalog & Inventory Foundations Architecture (Stage 6)
+
+### 7.1 Decoupling of Commercial Catalog from Physical Inventory
+* **Catalog Layer (Commercial Concept):**
+  - `Product`: High-level commercial model (e.g., "18K Classic Solitaire Ring Model A"). Represents catalog metadata, branding, and jewelry category.
+  - `ProductVariant`: Concrete specification variant (e.g., "18K / Size 54 / 6.0g net gold / 1.0ct G-VS1 diamond") with its own immutable, tenant-scoped `SKU`.
+  - **Financial Separation:** Neither `Product` nor `ProductVariant` performs price calculations. Authoritative pricing is exclusively calculated on demand by the **Stage 5 Pricing Engine**. Variants may store a non-authoritative reference (`pricingRuleId`) pointing to an effective pricing rule.
+* **Inventory Layer (Physical Asset Tracking):**
+  - `InventoryItem`: Represents a discrete, serialized, physical piece of precious jewelry stored in an inventory location. Holds physical mass (`grossWeight`, `goldWeight`, `purity`), serial number, barcode, and status.
+  - `InventoryLocation`: Tenant-scoped physical or digital storage area (e.g. `MAIN_VAULT`, `SHOWROOM_DISPLAY`, `WORKSHOP`). Code uniqueness is enforced per tenant (`tenantId + code`).
+
+### 7.2 SKU Semantics & Tenant-Scoped Uniqueness
+* **Format:** Strict regex validation `^[A-Z0-9_-]{3,64}$` guarantees consistency across barcode scanners and inventory ERP systems.
+* **Uniqueness:** Scoped strictly to `tenantId`. Two distinct tenants can independently utilize identical internal SKU formats without collision.
+* **Deterministic Generation:** A deterministic helper `SKU.generate({ prefix, productType, purityKarat, serialOrCode })` ensures standard SKU conventions.
+
+### 7.3 Material and Physical Jewelry Invariants
+* **Precious Metal Purity & Mass:** Reuses `GoldPurity` and canonical `Weight` (in grams). Pure gold content is calculated as $\text{netGoldWeight} \times \text{pureGoldFraction}$.
+* **Gemstone Carat Segregation:** `GemstoneCaratWeight` is strictly dedicated to gemstone mass ($1\text{ ct} = 0.200\text{ g}$). The domain model prohibits treating gemstone carats as precious metal bulk mass.
+* **Physical Weight Invariant:**
+  $$\text{grossWeight} \ge \text{netGoldWeight} + \sum \text{gemstonePhysicalMass}$$
+  Intake or variant creation is rejected if the physical mass arithmetic is violated.
+
+### 7.4 Finite Inventory State Machine
+* **Statuses:** `AVAILABLE`, `RESERVED`, `SOLD`, `DAMAGED`, `LOST`, `IN_TRANSIT`.
+* **State Transition Invariants:**
+  - `SOLD -> AVAILABLE` is forbidden without an explicit `returnFromSold` return workflow with a documented business reason.
+  - `LOST -> SOLD` is strictly forbidden. A lost piece must be formally recovered into inventory (`recoverLost`) before it can be assigned or sold.
+  - Redundant or undefined transitions are rejected with `BusinessRuleViolationError`.
+
+### 7.5 Immutable Append-Only Movements Audit Trail
+* Every inventory mutation (intake, transfer, reservation, release, sale, return, loss, recovery) generates an immutable `InventoryMovement` record.
+* No `UPDATE` or `DELETE` operations exist on `inventory_movements`. The history is an append-only verifiable audit trail.
+
+### 7.6 Foundation for Future Digital Jewelry Passport
+* `InventoryItem` carries a stable `passportRef` and derives a foundational `JewelryIdentity` (Stage 2).
+* QR code generation, blockchain anchors, and public provenance verification remain deferred to future stages (zero fake features).
+
+---
+
+## 8. Architectural Decision Records (ADRs)
 
 * **ADR-0001:** Adoption of Hexagonal Architecture & Clean Separation (Stage 1)
 * **ADR-0002:** Arbitrary-Precision Financial Engine with Decimal.js (Stage 1 & 2)
 * **ADR-0003:** Dedicated AI Gateway with Factual Grounding (Stage 1)
 * **ADR-0004:** Multi-Tenant Data Isolation Strategy (Stage 1, 2, 3)
 * **ADR-0005:** Idempotency Pattern for All State Mutations (Accepted)
-* **ADR-0006:** Sequential Immutable Migrations (Stage 2: `0001`, Stage 3: `0002`, Stage 4: `0003`, Stage 4.1: `0004`, Stage 5: `0005`, Stage 5 Audit: `0006`)
+* **ADR-0006:** Sequential Immutable Migrations (Stage 2: `0001`, Stage 3: `0002`, Stage 4: `0003`, Stage 4.1: `0004`, Stage 5: `0005`, Stage 5 Audit: `0006`, Stage 6: `0007`)
 * **ADR-0007:** Bilingual Architecture with Native RTL Support (Stage 1)
-* **ADR-0008:** In-Memory Repository Testing Strategy (Stage 1, 2, 3, 4, 4.1, 5)
+* **ADR-0008:** In-Memory Repository Testing Strategy (Stage 1, 2, 3, 4, 4.1, 5, 6)
 * **ADR-0009:** Separation of Custom Manufacturing (RFQ) from Standard Commerce (Accepted)
 * **ADR-0010:** Digital Jewelry Passport & Style DNA Extensibility (Accepted)
 * **ADR-0011:** Canonical Grams and Millesimal Fineness for Precious Metal Primitives (Stage 2)
@@ -273,18 +313,34 @@ PricingBreakdown
 * **ADR-0023:** Explainable Calculation Breakdown & Line Item Mathematical Invariant (Stage 5)
 * **ADR-0024:** Iranian Statutory Gold VAT Reform Compliance (VAT on Labor and Margin Only) (Stage 5)
 * **ADR-0025:** Unit-Aware Canonical Spot Rate Normalization (Stage 5)
+* **ADR-0026:** Strict Segregation of Reference Rules and Prohibition of Silent Commercial Defaults (Stage 5 Audit)
 
-### ADR-0026: Strict Segregation of Reference Rules and Prohibition of Silent Commercial Defaults
-* **Status:** Accepted (Stage 5 Final Audit)
-* **Context:** Pre-seeding commercial sample rules (e.g. 15% making, 7% margin) without explicit tags caused the engine to silently apply commercial percentages when no `ruleId` was provided.
-* **Decision:** Tag all non-authoritative sample rules with `isReferenceSample: true` and `specificationSource: 'REFERENCE_SAMPLE_NON_AUTHORITATIVE'`. Require explicit `ruleId` or an explicit tenant-configured rule; if neither exists, reject calculation with `EXPLICIT_RULE_REQUIRED`. Snapshot the complete effective configuration inside every `PricingResult`.
+### ADR-0027: Decoupling of Catalog Specifications from Discrete Inventory Items
+* **Status:** Accepted (Stage 6)
+* **Context:** In physical jewelry commerce, a product model or specification (e.g. 18K gold ring with specific band profile) exists independently of physical serialized stock pieces on hand. Conflating catalog with inventory causes duplicate catalog entries, corrupted weight records, and inability to track individual serialized pieces across vaults.
+* **Decision:** Strictly split the model into `Product` -> `ProductVariant` (Catalog domain) and `InventoryItem` -> `InventoryLocation` (Inventory domain). Catalog defines specifications; Inventory tracks discrete physical pieces and locations.
+
+### ADR-0028: Tenant-Scoped SKU Semantics and Validation Invariants
+* **Status:** Accepted (Stage 6)
+* **Context:** Merchants utilize heterogeneous SKU formats. Global SKU uniqueness would lead to cross-tenant naming collisions and information leakage.
+* **Decision:** Enforce SKU uniqueness strictly at the tenant level via composite database constraints `(tenant_id, sku)`. Validate SKU format as non-empty uppercase alphanumeric string with hyphens or underscores (3 to 64 characters).
+
+### ADR-0029: Finite Inventory State Machine and Append-Only Movement Audit Log
+* **Status:** Accepted (Stage 6)
+* **Context:** Physical gold pieces are high-value assets requiring regulatory and audit tracking. In-place state overwrites without audit logs allow inventory shrinkage, silent status changes, and unauthorized stock reversions.
+* **Decision:** Implement `InventoryStateMachine` enforcing legal lifecycle transitions. Require explicit documented return workflows for reverting `SOLD` items. Disallow direct sale of `LOST` items. Record every mutation atomically as an immutable, append-only `InventoryMovement`.
+
+### ADR-0030: Physical Jewelry Mass Invariants and Non-Interchangeable Gemstone Carat Semantics
+* **Status:** Accepted (Stage 6)
+* **Context:** Conflating gemstone carats with gold weight leads to severe financial calculation errors. Physically impossible items (gross weight less than net gold or gemstone mass) corrupt valuation.
+* **Decision:** Introduce dedicated `GemstoneCaratWeight` distinct from precious metal `Weight`. Enforce physical validation: $\text{grossWeight} \ge \text{netGoldWeight} + \sum \text{gemstoneWeight}$. Prohibit accepting carats as precious metal weight.
 
 ---
 
-## 8. Security & Boundary Hardening Status
+## 9. Security & Boundary Hardening Status
 
 * **Credential Protection:** Provider API keys and connection credentials never enter domain entities, repository records, or API serialization DTOs.
-* **IDOR Protection:** Verified in `tests/idor-security.test.ts`. Cross-tenant resource queries or mutations are strictly rejected regardless of user-supplied tenant IDs.
+* **IDOR Protection:** Verified in `tests/idor-security.test.ts`, `tests/pricing-tenant-isolation.test.ts`, and `tests/catalog-inventory-security.test.ts`. Cross-tenant queries or mutations for Products, Variants, Inventory Items, Locations, and Movements are strictly rejected.
 * **User Enumeration Prevention:** Login failures return uniform `401 Unauthorized` ("Invalid email or password.") whether the email exists or not.
 * **Credential Leakage Prevention:** DTOs never serialize `password_hash`. `PasswordHash.toString()` redacts hash contents.
 * **Financial Rounding Attack Prevention:** Premature rounding is structurally prohibited; calculations preserve high-precision decimal representation.

@@ -16,6 +16,11 @@ export * from './repositories/drizzle-market-observation.repository.js';
 export * from './repositories/drizzle-fx-rate.repository.js';
 export * from './repositories/drizzle-pricing-rule.repository.js';
 export * from './repositories/drizzle-pricing-result.repository.js';
+export * from './repositories/drizzle-product.repository.js';
+export * from './repositories/drizzle-product-variant.repository.js';
+export * from './repositories/drizzle-inventory-location.repository.js';
+export * from './repositories/drizzle-inventory-item.repository.js';
+export * from './repositories/drizzle-inventory-movement.repository.js';
 
 // Adapters
 export * from './adapters/in-memory-tenant.repository.js';
@@ -29,6 +34,11 @@ export * from './adapters/in-memory-market-observation.repository.js';
 export * from './adapters/in-memory-fx-rate.repository.js';
 export * from './adapters/in-memory-pricing-rule.repository.js';
 export * from './adapters/in-memory-pricing-result.repository.js';
+export * from './adapters/in-memory-product.repository.js';
+export * from './adapters/in-memory-product-variant.repository.js';
+export * from './adapters/in-memory-inventory-location.repository.js';
+export * from './adapters/in-memory-inventory-item.repository.js';
+export * from './adapters/in-memory-inventory-movement.repository.js';
 
 // Providers
 export * from './providers/unavailable-market-data.provider.js';
