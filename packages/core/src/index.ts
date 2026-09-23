@@ -14,6 +14,10 @@ export * from './ports/user.repository.port.js';
 export * from './ports/tenant-membership.repository.port.js';
 export * from './ports/session.repository.port.js';
 export * from './ports/password-hasher.port.js';
+export * from './ports/market-data-provider.port.js';
+export * from './ports/market-observation.repository.port.js';
+export * from './ports/market-instrument.repository.port.js';
+export * from './ports/market-data-source.repository.port.js';
 
 // Domain Foundations (Stage 2)
 export * from './domain/finance/currency.js';
@@ -34,3 +38,14 @@ export * from './domain/iam/permissions.js';
 export * from './domain/iam/tenant-membership.js';
 export * from './domain/iam/session.js';
 export * from './domain/iam/authorization.service.js';
+
+// Market Data Foundations (Stage 4)
+export * from './domain/market-data/market-unit.js';
+export * from './domain/market-data/market-data-types.js';
+export * from './domain/market-data/market-data-source.js';
+export * from './domain/market-data/market-instrument.js';
+export * from './domain/market-data/market-price.js';
+export * from './domain/market-data/market-observation.js';
+export * from './domain/market-data/market-data-freshness.policy.js';
+export * from './domain/market-data/market-data-ingestion.service.js';
+export * from './domain/market-data/market-data-query.service.js';

@@ -105,6 +105,28 @@ describe('Architecture & Monorepo Boundaries', () => {
     }
   });
 
+  it('ensures @v-gold/core has ZERO imports of external market provider SDKs or HTTP client libraries', () => {
+    const coreFiles = getAllFiles(coreSrcDir);
+    const forbiddenPatterns = [
+      /from ['"]axios['"]/,
+      /from ['"]got['"]/,
+      /from ['"]node-fetch['"]/,
+      /from ['"]superagent['"]/,
+      /from ['"]goldapi['"]/,
+      /from ['"]metals-api['"]/,
+    ];
+
+    for (const file of coreFiles) {
+      const content = fs.readFileSync(file, 'utf-8');
+      for (const pattern of forbiddenPatterns) {
+        expect(
+          pattern.test(content),
+          `Core file ${path.relative(rootDir, file)} must not import external HTTP/market client SDKs (matched ${pattern})`
+        ).toBe(false);
+      }
+    }
+  });
+
   it('ensures @v-gold/core package.json dependencies are strictly domain-only', () => {
     const corePkgPath = path.resolve(rootDir, 'packages/core/package.json');
     const corePkg = JSON.parse(fs.readFileSync(corePkgPath, 'utf-8'));
@@ -118,6 +140,8 @@ describe('Architecture & Monorepo Boundaries', () => {
       'pg',
       'openai',
       '@anthropic-ai/sdk',
+      'axios',
+      'node-fetch',
       '@v-gold/database',
       '@v-gold/ai-gateway',
       '@v-gold/web',

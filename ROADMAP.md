@@ -53,20 +53,23 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 4 — Market Data Infrastructure
-* **Status:** **PENDING** (Awaiting explicit user command)
+* **Status:** **COMPLETE**
 * **Focus:**
-  - Gold spot rate feeds (18K, 24K, Mesghal, Ounce, Coin rates).
-  - Provider abstraction port (`GoldRateProviderPort`).
-  - Truthful fallback state: Explicit `UNAVAILABLE` or deterministic dev data.
-  - Rate caching layer with TTL and staleness indicators.
-* **Completion Criteria:** Invariant tests pass; rate provider mock tests pass; zero invented live market data.
+  - Domain entities & value objects: `MarketDataSource`, `MarketInstrument`, `MarketPrice` (Decimal.js), `MarketObservation`, `MarketUnit`, `MarketDataFreshnessPolicy`.
+  - Provider abstraction: `MarketDataProviderPort` with explicit capability model (`ProviderCapabilities`).
+  - Truthful fallback: `UnavailableMarketDataProvider` (no fake live data); `MockMarketDataProvider` for automated tests only.
+  - Ingestion: `MarketDataIngestionService` enforcing capability checks, Decimal parsing, idempotency by `(sourceId, instrumentId, observedAt)`, and append-only immutability.
+  - Query: `MarketDataQueryService` evaluating freshness (`FRESH`, `STALE`, `UNAVAILABLE`) and historical ranges.
+  - PostgreSQL schema & numbered migration `0003_market_data_foundation.sql` (`market_data_sources`, `market_instruments`, `market_observations` with `NUMERIC(24, 8)`).
+  - API endpoints: `/api/v1/market-data/instruments`, `/api/v1/market-data/latest`, `/api/v1/market-data/latest/:instrument`.
+* **Completion Gate:** 140 passed / 0 skipped / 0 failed across 31 test files, 0 typecheck errors, clean Next.js production build.
 
 ---
 
 ### Stage 4.1 — Financial Precision & Currency Semantics
-* **Status:** **PENDING**
+* **Status:** **PENDING** (Awaiting explicit user command)
 * **Focus:**
-  - Currency normalization (`IRR`, `TOMAN`, `USD`).
+  - Currency normalization (`IRR`, `TOMAN`, `USD`, `EUR`).
   - Deterministic rounding modes (`ROUND_HALF_UP`).
   - Precision unit tests for extreme fractional gold weights (milligram levels).
 * **Completion Criteria:** Zero floating-point drift across 100,000 synthetic financial computations.

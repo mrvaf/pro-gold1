@@ -11,7 +11,8 @@
     "paths": {
       "@v-gold/core": ["../packages/core/src/index.ts"],
       "@v-gold/database": ["../packages/database/src/index.ts"],
-      "@v-gold/ai-gateway": ["../packages/ai-gateway/src/index.ts"]
+      "@v-gold/ai-gateway": ["../packages/ai-gateway/src/index.ts"],
+      "@/*": ["../apps/web/*"]
     }
   },
   "include": [
