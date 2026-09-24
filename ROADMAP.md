@@ -124,13 +124,17 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 
 ---
 
-### Stage 8 — Seller OS & Dashboard
-* **Status:** **PENDING**
+### Stage 8 — Seller OS Foundation
+* **Status:** **COMPLETE & FINALIZED**
 * **Focus:**
-  - Seller administration dashboard (inventory, order overview, pricing adjustments).
-  - Bulk stock updates and profit/making fee controls.
-  - Seller-scoped API endpoints with strict authorization guards.
-* **Completion Criteria:** All seller endpoints reject requests from unauthorized tenants.
+  - `SellerWorkspace` aggregate root bound strictly to `Tenant`, `SellerProfile`, and optional `Store`.
+  - Single workspace per seller profile invariant with finite lifecycle (`ACTIVE`, `SUSPENDED`, `ARCHIVED`).
+  - IAM reuse: additive `OPERATOR` role and granular `seller.*` permissions on existing `TenantMembership`.
+  - Zero-fake-KPI operational overview aggregation from authoritative inventory, listing, and staff repositories.
+  - Inventory inspection and transfers orchestrated via Stage 6 `InventoryService` and `InventoryUnitOfWorkPort`.
+  - Listing lifecycle management orchestrated via Stage 7 `SellerListing`.
+  - Multi-tenant isolation and IDOR mitigation with composite foreign keys in PostgreSQL.
+* **Completion Criteria:** 379 tests passing across 65 test files; zero regressions; strict tenant isolation; sequential migration `0011_seller_os_foundation.sql`.
 
 ---
 

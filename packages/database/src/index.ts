@@ -24,6 +24,7 @@ export * from './repositories/drizzle-inventory-movement.repository.js';
 export * from './repositories/drizzle-inventory-unit-of-work.js';
 export * from './repositories/drizzle-seller-profile.repository.js';
 export * from './repositories/drizzle-seller-listing.repository.js';
+export * from './repositories/drizzle-seller-workspace.repository.js';
 
 // Adapters
 export * from './adapters/in-memory-tenant.repository.js';
@@ -45,6 +46,7 @@ export * from './adapters/in-memory-inventory-movement.repository.js';
 export * from './adapters/in-memory-inventory-unit-of-work.js';
 export * from './adapters/in-memory-seller-profile.repository.js';
 export * from './adapters/in-memory-seller-listing.repository.js';
+export * from './adapters/in-memory-seller-workspace.repository.js';
 
 // Providers
 export * from './providers/unavailable-market-data.provider.js';

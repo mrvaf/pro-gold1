@@ -370,12 +370,34 @@ PricingBreakdown
 * **Context:** Sellers may face compliance review or administrative holds. Allowing active listings to remain discoverable or permitting new listings to be activated while a merchant is suspended risks regulatory and financial harm.
 * **Decision:** Implement explicit state machines for `SellerProfile` (`DRAFT`, `ACTIVE`, `SUSPENDED`, `ARCHIVED`) and `SellerListing` (`DRAFT`, `ACTIVE`, `PAUSED`, `ARCHIVED`). Listing activation strictly requires `seller.status === 'ACTIVE'`. Suspending a seller dynamically suppresses all of their listings from public marketplace feeds (`listPublicListings`) and returns `404 Not Found` on public storefront endpoints (`/marketplace/sellers/:slug`).
 
+### ADR-0037: Dedicated Operational SellerWorkspace Bound to Tenant, SellerProfile, and Store
+* **Status:** Accepted (Stage 8)
+* **Context:** Merchant operators need an internal administrative workspace (`SellerWorkspace`) to oversee store inventory, staff, and listings. Creating independent merchant entities disconnected from the parent tenant or permitting multiple active operational workspaces per seller profile risks split-brain state and cross-tenant leakage.
+* **Decision:** Establish `SellerWorkspace` aggregate root in `@v-gold/core` bound strictly to a parent `Tenant`, an existing `SellerProfile`, and an optional `Store`. Enforce single workspace per seller profile invariant at the domain layer and via a unique constraint in PostgreSQL (`UNIQUE ("seller_profile_id")` in `0011_seller_os_foundation.sql`). Enforce multi-tenant cross-integrity via composite foreign keys:
+  - `FOREIGN KEY ("seller_profile_id", "tenant_id") REFERENCES "seller_profiles"("id", "tenant_id") ON DELETE CASCADE`
+  - `FOREIGN KEY ("store_id", "tenant_id") REFERENCES "stores"("id", "tenant_id") ON DELETE SET NULL`
+  Implement finite state machine (`ACTIVE`, `SUSPENDED`, `ARCHIVED`). Suspending a workspace prohibits operational actions such as inventory transfers.
+
+### ADR-0038: IAM System Reuse with Granular OPERATOR Role and Seller OS Permissions
+* **Status:** Accepted (Stage 8)
+* **Context:** Operating a merchant store requires staff members with distinct operational privileges (e.g. counter staff, vault keepers, store managers). Creating a separate seller authentication/IAM system would duplicate authentication logic, fragment sessions, and increase security attack surface.
+* **Decision:** Strictly reuse existing Stage 3 `User` and `TenantMembership` infrastructure. Add additive role `OPERATOR` to `ROLES` and introduce granular Seller OS permissions (`seller.os.read`, `seller.os.manage`, `seller.staff.read`, `seller.staff.manage`, `seller.inventory.read`, `seller.inventory.manage`, `seller.listings.read`, `seller.listings.manage`). Staff access is authenticated via existing session tokens and authorized by verifying that `TenantMembership.role` possesses the required permission.
+
+### ADR-0039: Zero-Fake-KPI Operational Overview Architecture
+* **Status:** Accepted (Stage 8)
+* **Context:** Executive and merchant dashboards frequently display hardcoded, mocked, or placeholder metrics that do not reflect actual operational reality. This violates the V-GOLD core principle of authoritative data and creates untrustworthy operational systems.
+* **Decision:** The Seller OS operational overview endpoint (`GET /api/v1/seller-os/overview`) aggregates real counts from authoritative repositories:
+  - Real inventory count grouped by physical state (`AVAILABLE`, `RESERVED`, `IN_TRANSIT`, `DAMAGED`, `LOST`, `SOLD`) directly from `InventoryItemRepositoryPort`.
+  - Real marketplace listing count grouped by state (`ACTIVE`, `PAUSED`, `DRAFT`, `ARCHIVED`) directly from `SellerListingRepositoryPort`.
+  - Real staff count (`totalMembers`, `activeMembers`, `operatorsCount`) directly from `TenantMembershipRepositoryPort`.
+  Strictly NO placeholder charts, mock trend percentages, synthetic forecasts, or fake analytics engines. Absent data returns zero or null.
+
 ---
 
 ## 9. Security & Boundary Hardening Status
 
 * **Credential Protection:** Provider API keys and connection credentials never enter domain entities, repository records, or API serialization DTOs.
-* **IDOR Protection:** Verified in `tests/idor-security.test.ts`, `tests/pricing-tenant-isolation.test.ts`, `tests/catalog-inventory-security.test.ts`, and `tests/marketplace-service-and-isolation.test.ts`. Cross-tenant queries or mutations for Products, Variants, Inventory Items, Locations, Movements, Seller Profiles, and Seller Listings are strictly rejected.
+* **IDOR Protection:** Verified in `tests/idor-security.test.ts`, `tests/pricing-tenant-isolation.test.ts`, `tests/catalog-inventory-security.test.ts`, `tests/marketplace-service-and-isolation.test.ts`, and `tests/seller-os-tenant-isolation.test.ts`. Cross-tenant queries or mutations for Products, Variants, Inventory Items, Locations, Movements, Seller Profiles, Seller Listings, and Seller Workspaces are strictly rejected.
 * **Public Discovery Sanitization:** Public marketplace endpoints (`/api/v1/marketplace/...`) strictly sanitize internal tenant IDs, tax identification numbers, business registration codes, internal store links, and audit metadata.
 * **User Enumeration Prevention:** Login failures return uniform `401 Unauthorized` ("Invalid email or password.") whether the email exists or not.
 * **Credential Leakage Prevention:** DTOs never serialize `password_hash`. `PasswordHash.toString()` redacts hash contents.

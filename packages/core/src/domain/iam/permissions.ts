@@ -1,4 +1,4 @@
-export const ROLES = ['OWNER', 'ADMIN', 'MEMBER'] as const;
+export const ROLES = ['OWNER', 'ADMIN', 'OPERATOR', 'MEMBER'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const PERMISSIONS = [
@@ -10,6 +10,14 @@ export const PERMISSIONS = [
   'marketplace.seller.manage',
   'marketplace.listing.read',
   'marketplace.listing.manage',
+  'seller.os.read',
+  'seller.os.manage',
+  'seller.staff.read',
+  'seller.staff.manage',
+  'seller.inventory.read',
+  'seller.inventory.manage',
+  'seller.listings.read',
+  'seller.listings.manage',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -23,6 +31,14 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'marketplace.seller.manage',
     'marketplace.listing.read',
     'marketplace.listing.manage',
+    'seller.os.read',
+    'seller.os.manage',
+    'seller.staff.read',
+    'seller.staff.manage',
+    'seller.inventory.read',
+    'seller.inventory.manage',
+    'seller.listings.read',
+    'seller.listings.manage',
   ],
   ADMIN: [
     'tenant.read',
@@ -32,11 +48,33 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'marketplace.seller.manage',
     'marketplace.listing.read',
     'marketplace.listing.manage',
+    'seller.os.read',
+    'seller.os.manage',
+    'seller.staff.read',
+    'seller.staff.manage',
+    'seller.inventory.read',
+    'seller.inventory.manage',
+    'seller.listings.read',
+    'seller.listings.manage',
+  ],
+  OPERATOR: [
+    'tenant.read',
+    'marketplace.seller.read',
+    'marketplace.listing.read',
+    'seller.os.read',
+    'seller.staff.read',
+    'seller.inventory.read',
+    'seller.inventory.manage',
+    'seller.listings.read',
+    'seller.listings.manage',
   ],
   MEMBER: [
     'tenant.read',
     'marketplace.seller.read',
     'marketplace.listing.read',
+    'seller.os.read',
+    'seller.inventory.read',
+    'seller.listings.read',
   ],
 };
 

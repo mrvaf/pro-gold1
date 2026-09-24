@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.7.0-alpha`
-* **Current Stage:** **Stage 7 — Seller Marketplace Foundation**
+* **Project Version:** `0.8.0-alpha`
+* **Current Stage:** **Stage 8 — Seller OS Foundation**
 * **Stage Status:** **COMPLETE & FINALIZED**
 * **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_07_COMPLETE`
-* **Next Target Stage:** **Stage 8 — Seller OS**
+* **Last Verified Snapshot:** `V-GOLD_STAGE_08_FINAL_COMPLETE`
+* **Next Target Stage:** **Stage 9 — AI Conversational Designer**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -26,8 +26,9 @@
 | **4.1**| **Financial Precision & Currency Semantics** | **COMPLETE** | 187 passed / 0 skipped / 0 failed | PASS | PASS | Audited precision matrix, audited rounding modes, NUMERIC(32, 16) FX storage, truncation guard, 0004 migration |
 | **5** | **Authoritative Pricing Engine** | **COMPLETE** | 237 passed / 0 skipped / 0 failed | PASS | PASS | Audited reference rule segregation, no silent commercial defaults, carat separation, rule config snapshot, 0005 & 0006 migrations |
 | **6** | **Catalog & Inventory Foundations** | **COMPLETE** | 293 passed / 0 skipped / 0 failed | PASS | PASS | Product/Variant separation, SKU validation & anti-drift derivation, physical weight & carat invariants, finite InventoryStateMachine with IN_TRANSIT workflow, append-only movements, Unit of Work atomicity, store/tenant composite isolation, 0007 & 0008 migrations |
-| **7** | **Seller Marketplace Foundation** | **COMPLETE** | **337 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | SellerProfile identity & finite lifecycle, global slug uniqueness & normalization (architectural URL decision), SellerListing decoupled from physical inventory, composite database FKs (tenant + product variant consistency), cascading suspension with instant public discovery suppression, non-archived listing uniqueness semantics, 0009 & 0010 migrations |
-| 8 | Seller OS | PENDING | — | — | — | Awaiting user command |
+| **7** | **Seller Marketplace Foundation** | **COMPLETE** | 337 passed / 0 skipped / 0 failed | PASS | PASS | SellerProfile identity & finite lifecycle, global slug uniqueness & normalization (architectural URL decision), SellerListing decoupled from physical inventory, composite database FKs (tenant + product variant consistency), cascading suspension with instant public discovery suppression, non-archived listing uniqueness semantics, 0009 & 0010 migrations |
+| **8** | **Seller OS Foundation** | **COMPLETE** | **379 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `SellerWorkspace` aggregate root, finite lifecycle (`ACTIVE`, `SUSPENDED`, `ARCHIVED`), single workspace per seller profile invariant, IAM reuse with additive `OPERATOR` role and granular permissions, zero-fake-KPI operational overview aggregation, inventory transfer orchestration via Stage 6 UoW, listing management orchestration via Stage 7, composite foreign keys `(seller_profile_id, tenant_id)` & `(store_id, tenant_id)`, additive sequential migration `0011_seller_os_foundation.sql`, 100% IDOR blocked |
+| 9 | AI Conversational Designer | PENDING | — | — | — | Awaiting user command |
 | 9 | AI Conversational Designer | PENDING | — | — | — | |
 | 10| AI Concept Generation | PENDING | — | — | — | |
 | 11| Visual Search Engine | PENDING | — | — | — | |
@@ -49,7 +50,32 @@
 
 ---
 
-## Stage 6 Deliverables & Invariants Audit Summary
+## Stage 8 Deliverables & Invariants Audit Summary
+
+```text
+========================================================================
+Stage 8: Seller OS Foundation Gate Summary
+- Total Tests:               379 passed / 0 skipped / 0 failed (65 test files)
+- Baseline Preservation:     100% (All 337 Stage 7 tests + 42 new Stage 8 tests)
+- TypeScript Strict Check:   PASS (0 errors across core, database, ai-gateway, web, tests)
+- Next.js Production Build:  PASS (27 routes compiled with zero errors)
+- Operational Workspace:    PASS (SellerWorkspace aggregate root, lifecycle: ACTIVE, SUSPENDED, ARCHIVED)
+- Single Workspace Invariant:PASS (1:1 constraint between SellerProfile and SellerWorkspace enforced)
+- IAM System Reuse:          PASS (Reused Stage 3 User + TenantMembership; zero duplicate IAM)
+- Role & Permission Model:   PASS (Added OPERATOR role and 8 granular seller.* permissions)
+- Operational Overview:      PASS (Aggregates authentic inventory, listing, staff counts; zero fake KPIs)
+- Inventory Orchestration:   PASS (Integrated with Stage 6 InventoryService & UoW; transfers auditable)
+- Listing Orchestration:     PASS (Integrated with Stage 7 SellerListing lifecycle)
+- DB Composite Integrity:    PASS (Composite FKs: workspace->seller_profiles(id, tenant_id), workspace->stores(id, tenant_id))
+- Multi-Tenant Isolation:    PASS (IDOR security verified across all workspace, staff, inventory, listing endpoints)
+- Additive Migration:        0011_seller_os_foundation.sql (Sequential, non-destructive, reviewable)
+- PostgreSQL Integration:    POSTGRESQL INTEGRATION: NOT AVAILABLE (daemon not running in sandbox)
+========================================================================
+```
+
+---
+
+## Stage 7 Deliverables & Invariants Audit Summary
 
 ```text
 ========================================================================

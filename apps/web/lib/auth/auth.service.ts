@@ -240,6 +240,22 @@ export class AuthService {
       memberships,
     };
   }
+
+  get userRepository(): UserRepositoryPort {
+    return this.userRepo;
+  }
+
+  get tenantRepository(): TenantRepositoryPort {
+    return this.tenantRepo;
+  }
+
+  get membershipRepository(): TenantMembershipRepositoryPort {
+    return this.membershipRepo;
+  }
+
+  get sessionRepository(): SessionRepositoryPort {
+    return this.sessionRepo;
+  }
 }
 
 // Global default singleton service instance for web runtime

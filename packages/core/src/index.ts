@@ -98,3 +98,11 @@ export * from './domain/marketplace/seller-listing.js';
 export * from './ports/seller-profile.repository.port.js';
 export * from './ports/seller-listing.repository.port.js';
 
+// Seller OS Foundations (Stage 8)
+export * from './domain/seller-os/seller-os-errors.js';
+export * from './domain/seller-os/workspace-status.js';
+export * from './domain/seller-os/seller-workspace.js';
+export * from './domain/seller-os/seller-overview.js';
+export * from './ports/seller-workspace.repository.port.js';
+
+
