@@ -134,7 +134,7 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
   - Inventory inspection and transfers orchestrated via Stage 6 `InventoryService` and `InventoryUnitOfWorkPort`.
   - Listing lifecycle management orchestrated via Stage 7 `SellerListing`.
   - Multi-tenant isolation and IDOR mitigation with composite foreign keys in PostgreSQL.
-* **Completion Criteria:** 379 tests passing across 65 test files; zero regressions; strict tenant isolation; sequential migration `0011_seller_os_foundation.sql`.
+* **Completion Criteria:** 385 tests passing across 65 test files; zero regressions; strict tenant isolation; sequential migration `0011_seller_os_foundation.sql`.
 
 ---
 

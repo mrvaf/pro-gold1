@@ -41,7 +41,7 @@ No stage begins without an explicit prompt from the user following verification 
 * **Market Data:** Ingestion, validation, normalization, and freshness evaluation (`packages/core/src/domain/market-data/`, `packages/database/src/providers/`)
 * **Password Security:** Scrypt KDF with 16-byte cryptographically secure salt & constant-time verification
 * **Session Security:** Server-side sessions with HttpOnly, SameSite, Secure cookies (Zero client-side token storage)
-* **Testing:** Vitest 3.x (65 test suites, 379 passing tests)
+* **Testing:** Vitest 3.x (65 test suites, 385 passing tests)
 * **Validation:** Zod
 * **Financial & Mass Precision:** Decimal.js 10.4.x
 * **Internationalization:** Persian (`fa-IR`, RTL default) & English (`en-US`, LTR)
@@ -95,7 +95,7 @@ No stage begins without an explicit prompt from the user following verification 
 │   │   ├── src/providers/     # UnavailableMarketDataProvider & MockMarketDataProvider
 │   │   └── src/security/      # ScryptPasswordHasher (crypto.timingSafeEqual)
 │   └── ai-gateway/            # AI Gateway abstraction (AiGatewayClient, MockAdapter, UnavailableAdapter)
-├── tests/                     # 65 Vitest test suites (379 tests passed)
+├── tests/                     # 65 Vitest test suites (385 tests passed)
 ├── ARCHITECTURE.md            # Comprehensive architecture documentation & ADRs
 ├── PROJECT_STATE.md           # Current execution status & verification gates
 └── ROADMAP.md                 # 26-Stage execution roadmap
@@ -114,7 +114,7 @@ No stage begins without an explicit prompt from the user following verification 
 ## 6. Verified Quality Commands
 
 ```bash
-# Run full Vitest test suite (379 tests passed across 65 test suites)
+# Run full Vitest test suite (385 tests passed across 65 test suites)
 npm test
 
 # Run strict TypeScript typecheck across all workspaces and tests
