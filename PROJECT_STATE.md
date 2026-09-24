@@ -8,7 +8,7 @@
 * **Current Stage:** **Stage 8 — Seller OS Foundation**
 * **Stage Status:** **COMPLETE & FINALIZED**
 * **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_08_FINAL_COMPLETE`
+* **Last Verified Snapshot:** `V-GOLD_STAGE_08_FINAL_COMPLETE` (official annotated Git tag → `main` commit `02ac468`)
 * **Next Target Stage:** **Stage 9 — AI Conversational Designer**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
@@ -29,7 +29,6 @@
 | **7** | **Seller Marketplace Foundation** | **COMPLETE** | 337 passed / 0 skipped / 0 failed | PASS | PASS | SellerProfile identity & finite lifecycle, global slug uniqueness & normalization (architectural URL decision), SellerListing decoupled from physical inventory, composite database FKs (tenant + product variant consistency), cascading suspension with instant public discovery suppression, non-archived listing uniqueness semantics, 0009 & 0010 migrations |
 | **8** | **Seller OS Foundation** | **COMPLETE** | **385 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `SellerWorkspace` aggregate root, finite lifecycle (`ACTIVE`, `SUSPENDED`, `ARCHIVED`), single workspace per seller profile invariant, IAM reuse with additive `OPERATOR` role and granular permissions, zero-fake-KPI operational overview aggregation, inventory transfer orchestration via Stage 6 UoW with failure-injection verification, listing management orchestration via Stage 7, column-specific composite foreign key `(store_id, tenant_id) ON DELETE SET NULL ("store_id")`, HttpOnly cookie-only authentication enforcement, additive sequential migration `0011_seller_os_foundation.sql`, 100% IDOR blocked |
 | 9 | AI Conversational Designer | PENDING | — | — | — | Awaiting user command |
-| 9 | AI Conversational Designer | PENDING | — | — | — | |
 | 10| AI Concept Generation | PENDING | — | — | — | |
 | 11| Visual Search Engine | PENDING | — | — | — | |
 | 12| Budget-Aware Design | PENDING | — | — | — | |
