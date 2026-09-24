@@ -31,7 +31,7 @@ import { getDefaultAuthService } from '../apps/web/lib/auth/auth.service.js';
 import { getCatalogContainer } from '../apps/web/lib/catalog/catalog-container.js';
 import { getInventoryContainer } from '../apps/web/lib/inventory/inventory-container.js';
 import { getMarketplaceContainer } from '../apps/web/lib/marketplace/marketplace-container.js';
-import { getSellerOsContainer } from '../apps/web/lib/seller-os/seller-os-container.js';
+import { SESSION_COOKIE_NAME } from '../apps/web/lib/auth/session-cookie.js';
 
 import { GET as getOverviewApi } from '../apps/web/app/api/v1/seller-os/overview/route.js';
 import {
@@ -232,7 +232,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
   });
 
   describe('Authentication & Authorization Gate', () => {
-    it('returns 401 Unauthorized when session token is missing', async () => {
+    it('returns 401 Unauthorized when session cookie is missing', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/seller-os/overview', {
         headers: { 'x-tenant-id': tenantId },
       });
@@ -253,7 +253,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${memberSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${memberSessionToken}`,
           },
           body: JSON.stringify({
             workspaceId: 'ws_dummy',
@@ -279,7 +279,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         headers: {
           'Content-Type': 'application/json',
           'x-tenant-id': tenantId,
-          Authorization: `Bearer ${ownerSessionToken}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
         },
         body: JSON.stringify({
           sellerProfileId,
@@ -306,7 +306,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         {
           headers: {
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${operatorSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
         }
       );
@@ -325,7 +325,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         headers: {
           'Content-Type': 'application/json',
           'x-tenant-id': tenantId,
-          Authorization: `Bearer ${ownerSessionToken}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
         },
         body: JSON.stringify({
           workspaceId,
@@ -349,7 +349,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${ownerSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
           },
           body: JSON.stringify({
             workspaceId,
@@ -371,7 +371,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${ownerSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
           },
           body: JSON.stringify({
             workspaceId,
@@ -393,7 +393,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         {
           headers: {
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${operatorSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
         }
       );
@@ -423,7 +423,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
       const req = new NextRequest('http://localhost:3000/api/v1/seller-os/staff', {
         headers: {
           'x-tenant-id': tenantId,
-          Authorization: `Bearer ${operatorSessionToken}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
         },
       });
 
@@ -441,11 +441,12 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         headers: {
           'Content-Type': 'application/json',
           'x-tenant-id': tenantId,
-          Authorization: `Bearer ${ownerSessionToken}`,
+          Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
         },
         body: JSON.stringify({
           userId: newStaffUserId,
           role: 'MEMBER',
+          workspaceId,
         }),
       });
 
@@ -464,10 +465,11 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${ownerSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
           },
           body: JSON.stringify({
             role: 'OPERATOR',
+            workspaceId,
           }),
         }
       );
@@ -489,7 +491,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         {
           headers: {
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${operatorSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
         }
       );
@@ -510,7 +512,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${operatorSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
           body: JSON.stringify({
             workspaceId,
@@ -538,7 +540,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         {
           headers: {
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${operatorSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
         }
       );
@@ -557,7 +559,7 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': tenantId,
-            Authorization: `Bearer ${operatorSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
           body: JSON.stringify({
             workspaceId,

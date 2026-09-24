@@ -37,11 +37,13 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'fk_seller_workspaces_store_tenant'
   ) THEN
+    -- Invariant: Deleting a store sets ONLY store_id to NULL.
+    -- tenant_id remains NOT NULL and unchanged; workspace remains tenant-owned.
     ALTER TABLE "seller_workspaces"
       ADD CONSTRAINT "fk_seller_workspaces_store_tenant"
       FOREIGN KEY ("store_id", "tenant_id")
       REFERENCES "stores"("id", "tenant_id")
-      ON DELETE SET NULL;
+      ON DELETE SET NULL ("store_id");
   END IF;
 END $$;
 

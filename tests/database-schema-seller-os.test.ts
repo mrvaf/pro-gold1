@@ -20,7 +20,7 @@ describe('Seller OS Database Schema & Migration Invariants', () => {
     expect(sellerWorkspacesTable.updatedByActorId).toBeDefined();
   });
 
-  it('verifies sequential migration 0011_seller_os_foundation.sql integrity', () => {
+  it('verifies sequential migration 0011_seller_os_foundation.sql integrity and column-specific SET NULL', () => {
     const migrationPath = path.resolve(
       __dirname,
       '../packages/database/src/migrations/0011_seller_os_foundation.sql'
@@ -45,10 +45,11 @@ describe('Seller OS Database Schema & Migration Invariants', () => {
     expect(sqlContent).toContain('FOREIGN KEY ("seller_profile_id", "tenant_id")');
     expect(sqlContent).toContain('REFERENCES "seller_profiles"("id", "tenant_id")');
 
-    // 5. Composite Foreign Key on (store_id, tenant_id) -> stores(id, tenant_id)
+    // 5. Composite Foreign Key on (store_id, tenant_id) -> stores(id, tenant_id) with column-specific SET NULL
     expect(sqlContent).toContain('fk_seller_workspaces_store_tenant');
     expect(sqlContent).toContain('FOREIGN KEY ("store_id", "tenant_id")');
     expect(sqlContent).toContain('REFERENCES "stores"("id", "tenant_id")');
+    expect(sqlContent).toContain('ON DELETE SET NULL ("store_id")');
 
     // 6. Performance indexes
     expect(sqlContent).toContain('CREATE INDEX IF NOT EXISTS "seller_workspaces_tenant_status_idx"');

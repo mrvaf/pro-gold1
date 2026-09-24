@@ -392,6 +392,17 @@ PricingBreakdown
   - Real staff count (`totalMembers`, `activeMembers`, `operatorsCount`) directly from `TenantMembershipRepositoryPort`.
   Strictly NO placeholder charts, mock trend percentages, synthetic forecasts, or fake analytics engines. Absent data returns zero or null.
 
+### ADR-0040: Production HttpOnly Cookie Enforcement and Column-Specific Composite FK Invariants
+* **Status:** Accepted (Stage 8 Integrity Audit)
+* **Context:**
+  1. Authentication: Allowing non-standard authorization headers (`x-session-id`, ad-hoc Bearer extraction) in production API handlers creates security confusion, tempts frontend clients into storing session tokens in JavaScript-accessible storage (`localStorage`), and weakens protection against XSS-driven token exfiltration.
+  2. Composite Store Foreign Key: `seller_workspaces` references `stores("id", "tenant_id")` while declaring `tenant_id NOT NULL`. A generic `ON DELETE SET NULL` in PostgreSQL attempts to set all composite columns (`store_id` and `tenant_id`) to NULL, causing an immediate runtime constraint violation (`not_null_violation`).
+  3. Multi-Seller Workspace Boundaries: Within a multi-seller tenant, inventory and staff must not cross workspace boundaries indiscriminately.
+* **Decision:**
+  1. Strictly enforce HttpOnly, SameSite `vgold_session` session cookies as the sole production authentication path in `authenticateSellerOsRequest`. Remove non-standard header workarounds (`x-session-id`, Bearer tokens).
+  2. Explicitly specify column-targeted nullification in PostgreSQL DDL migration `0011_seller_os_foundation.sql`: `FOREIGN KEY ("store_id", "tenant_id") REFERENCES "stores"("id", "tenant_id") ON DELETE SET NULL ("store_id")`. When a store is deleted, `store_id` becomes NULL while `tenant_id` remains immutable and non-null.
+  3. Enforce workspace store boundaries on inventory transfers (rejecting transfers if item or target location does not belong to the workspace's store) and support explicit staff assignment mapping in `workspace.settings.assignedStaffUserIds`.
+
 ---
 
 ## 9. Security & Boundary Hardening Status

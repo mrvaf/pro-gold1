@@ -317,6 +317,8 @@ export class SellerOsService {
     let allItems = await this.inventoryItemRepo.listByTenant(tenId);
     if (workspace.storeId) {
       allItems = allItems.filter((i) => i.storeId === workspace.storeId);
+    } else {
+      allItems = allItems.filter((i) => !i.storeId);
     }
 
     const inventorySummary = {
@@ -402,7 +404,12 @@ export class SellerOsService {
     userId: string,
     role: Role,
     actorId?: string
-  ): Promise<Result<TenantMembership, NotFoundError | ConflictError | ForbiddenError | ValidationError>> {
+  ): Promise<
+    Result<
+      TenantMembership,
+      NotFoundError | ConflictError | ForbiddenError | ValidationError | BusinessRuleViolationError
+    >
+  > {
     const tenId = createEntityId<TenantId>(tenantId);
     const uId = createEntityId<UserId>(userId);
 
@@ -410,6 +417,13 @@ export class SellerOsService {
     const user = await this.userRepo.findById(uId);
     if (!user) {
       return err(new NotFoundError(`User "${userId}" not found.`));
+    }
+    if (user.status !== 'ACTIVE') {
+      return err(
+        new BusinessRuleViolationError(
+          `User "${userId}" is not active (status: ${user.status}). Cannot assign to operational staff.`
+        )
+      );
     }
 
     // 2. Check if membership already exists for this tenant
@@ -522,6 +536,8 @@ export class SellerOsService {
 
     if (ws.storeId) {
       items = items.filter((i) => i.storeId === ws.storeId);
+    } else {
+      items = items.filter((i) => !i.storeId);
     }
     if (filter?.locationId) {
       items = items.filter((i) => i.locationId === filter.locationId);
@@ -560,6 +576,15 @@ export class SellerOsService {
       return err(new NotFoundError(`Inventory item "${input.itemId}" not found.`));
     }
 
+    // Invariant: If workspace is bound to a store, item must belong to that store
+    if (ws.storeId && item.storeId && item.storeId !== ws.storeId) {
+      return err(
+        new ForbiddenError(
+          'Item does not belong to the store assigned to this workspace.'
+        )
+      );
+    }
+
     // 2. Fetch destination location and verify tenant
     const loc = await this.inventoryLocationRepo.findById(targetLocId, tenId);
     if (!loc) {
@@ -568,6 +593,15 @@ export class SellerOsService {
         return err(new ForbiddenError('Target location belongs to another tenant.'));
       }
       return err(new NotFoundError(`Target location "${input.toLocationId}" not found.`));
+    }
+
+    // Invariant: If workspace is bound to a store, destination location must belong to that store
+    if (ws.storeId && loc.storeId && loc.storeId !== ws.storeId) {
+      return err(
+        new ForbiddenError(
+          'Target destination location does not belong to the store assigned to this workspace.'
+        )
+      );
     }
 
     const actor = input.actorId

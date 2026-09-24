@@ -19,26 +19,23 @@ export type AuthContextResult = AuthContextSuccess | AuthContextFailure;
 
 /**
  * Validates session authentication, tenant membership, and granular role permissions.
- * Guarantees zero cross-tenant leakage (IDOR prevention).
+ *
+ * Security Policy:
+ * - Strictly enforces HttpOnly, SameSite session cookies as established in Stage 3 ADR-0016.
+ * - Non-standard headers (e.g. x-session-id or loose Bearer tokens) are strictly prohibited
+ *   in production authentication paths to prevent token storage in client-accessible storage
+ *   (mitigating XSS extraction and CSRF subversion).
+ * - Enforces zero cross-tenant leakage (IDOR prevention).
  */
 export async function authenticateSellerOsRequest(
   req: NextRequest,
   requiredPermission?: Permission,
   explicitTenantId?: string
 ): Promise<AuthContextResult> {
-  // 1. Extract session ID from cookie or headers
-  let sessionId = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-  if (!sessionId) {
-    const authHeader = req.headers.get('authorization');
-    if (authHeader?.toLowerCase().startsWith('bearer ')) {
-      sessionId = authHeader.slice(7).trim();
-    }
-  }
-  if (!sessionId) {
-    sessionId = req.headers.get('x-session-id') ?? undefined;
-  }
+  // 1. Extract session ID strictly from authoritative HttpOnly session cookie
+  const sessionId = req.cookies.get(SESSION_COOKIE_NAME)?.value;
 
-  if (!sessionId) {
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.length < 32) {
     return {
       ok: false,
       response: NextResponse.json(
@@ -46,7 +43,7 @@ export async function authenticateSellerOsRequest(
           success: false,
           error: {
             code: 'UNAUTHORIZED',
-            message: 'Authentication required. No active session token found.',
+            message: 'Authentication required. No active session cookie found.',
           },
         },
         { status: 401 }

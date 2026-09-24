@@ -481,6 +481,21 @@ describe('SellerOsService Application Logic & Orchestration', () => {
       expect(suspRes.unwrap().status).toBe('SUSPENDED');
       expect(suspRes.unwrap().isActive()).toBe(false);
     });
+
+    it('rejects adding inactive user to staff', async () => {
+      const inactiveUser = User.create({
+        email: Email.create('inactive@damas.ir').unwrap(),
+        passwordHash: PasswordHash.create('$2b$10$abcdefghijklmnopqrstuvwxyz123456').unwrap(),
+        displayName: 'Inactive User',
+      }).unwrap();
+      inactiveUser.suspend();
+      await userRepo.save(inactiveUser);
+
+      const addRes = await sellerOsService.addStaffMember(tenantId, inactiveUser.id, 'OPERATOR');
+      expect(addRes.isErr).toBe(true);
+      expect((addRes as any).error.code).toBe('UNPROCESSABLE_ENTITY');
+      expect((addRes as any).error.message).toContain('is not active');
+    });
   });
 
   describe('Inventory & Listing Operations Integration', () => {
@@ -565,6 +580,102 @@ describe('SellerOsService Application Logic & Orchestration', () => {
 
       expect(transRes.isErr).toBe(true);
       expect((transRes as any).error.code).toBe('WORKSPACE_SUSPENDED');
+    });
+
+    it('blocks inventory transfer when item belongs to a different store within same tenant', async () => {
+      // Workspace is bound to storeId (store_damas_bazaar)
+      const ws = (
+        await sellerOsService.createWorkspace({
+          tenantId,
+          sellerProfileId,
+          storeId,
+          name: 'Store Bound Workspace',
+        })
+      ).unwrap();
+
+      // Create a second store
+      const otherStoreId = createEntityId<StoreId>('store_tabriz_branch');
+      const otherStore = Store.create({
+        id: otherStoreId,
+        tenantId,
+        name: 'Tabriz Branch',
+        code: 'TBZ-01',
+      }).unwrap();
+      await storeRepo.save(tenantId, otherStore);
+
+      // Item belongs to otherStoreId
+      const otherStoreItem = InventoryItem.intake({
+        tenantId,
+        storeId: otherStoreId,
+        productVariantId: sampleVariantId,
+        sku: SKU.create('SKU-OTHER-01').unwrap(),
+        serialNumber: 'SN-OTHER-01',
+        locationId: locVault.id,
+        grossWeight: Weight.fromGrams('10').unwrap(),
+        goldWeight: Weight.fromGrams('10').unwrap(),
+        purity: GoldPurity.K24,
+        actor: ActorReference.system(),
+      }).unwrap().item;
+      await itemRepo.save(otherStoreItem);
+
+      const transRes = await sellerOsService.transferInventoryItem({
+        tenantId,
+        workspaceId: ws.id,
+        itemId: otherStoreItem.id,
+        toLocationId: locShowroom.id,
+      });
+
+      expect(transRes.isErr).toBe(true);
+      expect((transRes as any).error.code).toBe('FORBIDDEN');
+      expect((transRes as any).error.message).toContain('does not belong to the store assigned to this workspace');
+    });
+
+    it('enforces Unit of Work atomicity during transfer failure (failure injection)', async () => {
+      const ws = (
+        await sellerOsService.createWorkspace({
+          tenantId,
+          sellerProfileId,
+          storeId,
+          name: 'Atomic Transfer Workspace',
+        })
+      ).unwrap();
+
+      const item = InventoryItem.intake({
+        tenantId,
+        storeId,
+        productVariantId: sampleVariantId,
+        sku: SKU.create('SKU-FAIL-01').unwrap(),
+        serialNumber: 'SN-FAIL-01',
+        locationId: locVault.id,
+        grossWeight: Weight.fromGrams('10').unwrap(),
+        goldWeight: Weight.fromGrams('10').unwrap(),
+        purity: GoldPurity.K24,
+        actor: ActorReference.system(),
+      }).unwrap().item;
+      await itemRepo.save(item);
+
+      // Inject simulated failure during movement recording
+      uow.setSimulateFailureDuringMovement(true);
+
+      await expect(
+        sellerOsService.transferInventoryItem({
+          tenantId,
+          workspaceId: ws.id,
+          itemId: item.id,
+          toLocationId: locShowroom.id,
+        })
+      ).rejects.toThrow('Simulated database error during InventoryMovement recording');
+
+      // Reset failure injection
+      uow.setSimulateFailureDuringMovement(false);
+
+      // Invariant: Item location was rolled back / remains untouched in vault
+      const persistedItem = await itemRepo.findById(item.id, tenantId);
+      expect(persistedItem?.locationId).toBe(locVault.id);
+
+      // Invariant: Movement was NOT persisted
+      const movements = await moveRepo.listByItemId(item.id, tenantId);
+      expect(movements.filter((m) => m.movementType === 'TRANSFER')).toHaveLength(0);
     });
   });
 });

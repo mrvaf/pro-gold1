@@ -24,6 +24,7 @@ import {
   type StoreId,
   type ProductId,
   type ProductVariantId,
+  type InventoryLocationId,
   ActorReference,
   Session,
 } from '@v-gold/core';
@@ -32,6 +33,7 @@ import { getCatalogContainer } from '../apps/web/lib/catalog/catalog-container.j
 import { getInventoryContainer } from '../apps/web/lib/inventory/inventory-container.js';
 import { getMarketplaceContainer } from '../apps/web/lib/marketplace/marketplace-container.js';
 import { getSellerOsContainer } from '../apps/web/lib/seller-os/seller-os-container.js';
+import { SESSION_COOKIE_NAME } from '../apps/web/lib/auth/session-cookie.js';
 
 import { GET as getOverviewApi } from '../apps/web/app/api/v1/seller-os/overview/route.js';
 import {
@@ -40,8 +42,14 @@ import {
   PATCH as updateWorkspaceApi,
 } from '../apps/web/app/api/v1/seller-os/workspace/route.js';
 import { POST as transitionWorkspaceApi } from '../apps/web/app/api/v1/seller-os/workspace/transition/route.js';
+import {
+  GET as listStaffApi,
+  POST as addStaffApi,
+} from '../apps/web/app/api/v1/seller-os/staff/route.js';
 import { PATCH as updateStaffApi } from '../apps/web/app/api/v1/seller-os/staff/[id]/route.js';
+import { GET as listInventoryApi } from '../apps/web/app/api/v1/seller-os/inventory/route.js';
 import { POST as transferInventoryApi } from '../apps/web/app/api/v1/seller-os/inventory/[itemId]/transfer/route.js';
+import { GET as listListingsApi } from '../apps/web/app/api/v1/seller-os/listings/route.js';
 import { PATCH as updateListingApi } from '../apps/web/app/api/v1/seller-os/listings/[id]/route.js';
 
 describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
@@ -53,6 +61,7 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
 
   let victimSessionToken: string;
   let attackerSessionToken: string;
+  let memberSessionToken: string;
 
   let victimSellerProfileId: string;
   let victimWorkspaceId: string;
@@ -77,7 +86,7 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
     const tAttacker = createEntityId<TenantId>(attackerTenantId);
     const sAttacker = createEntityId<StoreId>(attackerStoreId);
 
-    // 1. Seed Victim Tenant, Store, User & Session
+    // 1. Seed Victim Tenant, Store, User & Session (OWNER)
     await authService.tenantRepository.save(
       Tenant.create({ id: tVictim, name: 'Isfahan Artisans', slug: 'isfahan-artisans' }).unwrap()
     );
@@ -100,6 +109,22 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
     }).unwrap();
     await authService.sessionRepository.save(sessVictim);
     victimSessionToken = sessVictim.id;
+
+    // Victim User with MEMBER role (insufficient permissions for management)
+    const uMember = User.create({
+      email: Email.create('member@isfahanart.ir').unwrap(),
+      passwordHash: PasswordHash.create('$2b$10$abcdefghijklmnopqrstuvwxyz123456').unwrap(),
+      displayName: 'Victim Member',
+    }).unwrap();
+    await authService.userRepository.save(uMember);
+    const memMember = TenantMembership.create({ tenantId: tVictim, userId: uMember.id, role: 'MEMBER' }).unwrap();
+    await authService.membershipRepository.save(memMember);
+    const sessMember = Session.create({
+      id: crypto.randomBytes(32).toString('hex'),
+      userId: uMember.id,
+    }).unwrap();
+    await authService.sessionRepository.save(sessMember);
+    memberSessionToken = sessMember.id;
 
     // 2. Seed Attacker Tenant, Store, User & Session
     await authService.tenantRepository.save(
@@ -245,113 +270,138 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
     victimListingId = listing.id;
   });
 
-  describe('Cross-Tenant IDOR Attack Mitigation', () => {
-    it('strictly forbids Attacker from reading Victim operational overview', async () => {
-      // Attacker attempts to query victimWorkspaceId using their own session and claiming victimTenantId
-      const reqWithSpoofedTenant = new NextRequest(
+  describe('Explicit Security Gates Matrix', () => {
+    // 1. 401 without authentication
+    it('returns 401 Unauthorized when request lacks session cookie', async () => {
+      const req = new NextRequest(
         `http://localhost:3000/api/v1/seller-os/overview?workspaceId=${victimWorkspaceId}`,
         {
-          headers: {
-            'x-tenant-id': victimTenantId,
-            Authorization: `Bearer ${attackerSessionToken}`,
-          },
+          headers: { 'x-tenant-id': victimTenantId },
         }
       );
-
-      const res1 = await getOverviewApi(reqWithSpoofedTenant);
-      expect(res1.status).toBe(403);
-
-      // Attacker attempts to query victimWorkspaceId under their own tenantId
-      const reqUnderAttackerTenant = new NextRequest(
-        `http://localhost:3000/api/v1/seller-os/overview?workspaceId=${victimWorkspaceId}`,
-        {
-          headers: {
-            'x-tenant-id': attackerTenantId,
-            Authorization: `Bearer ${attackerSessionToken}`,
-          },
-        }
-      );
-
-      const res2 = await getOverviewApi(reqUnderAttackerTenant);
-      expect([403, 404]).toContain(res2.status);
+      const res = await getOverviewApi(req);
+      expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.error.code).toBe('UNAUTHORIZED');
     });
 
-    it('strictly forbids Attacker from reading or mutating Victim workspace', async () => {
-      // 1. Read attempt
-      const readReq = new NextRequest(
-        `http://localhost:3000/api/v1/seller-os/workspace?workspaceId=${victimWorkspaceId}`,
-        {
-          headers: {
-            'x-tenant-id': attackerTenantId,
-            Authorization: `Bearer ${attackerSessionToken}`,
-          },
-        }
-      );
-      const readRes = await getWorkspaceApi(readReq);
-      expect([403, 404]).toContain(readRes.status);
-
-      // 2. Patch attempt
-      const patchReq = new NextRequest('http://localhost:3000/api/v1/seller-os/workspace', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-tenant-id': attackerTenantId,
-          Authorization: `Bearer ${attackerSessionToken}`,
-        },
-        body: JSON.stringify({
-          workspaceId: victimWorkspaceId,
-          name: 'Hacked Workspace Name',
-        }),
-      });
-      const patchRes = await updateWorkspaceApi(patchReq);
-      expect([403, 404]).toContain(patchRes.status);
-
-      // 3. Suspend attempt
-      const suspReq = new NextRequest(
-        'http://localhost:3000/api/v1/seller-os/workspace/transition',
+    // 2. 403 authenticated but insufficient permission
+    it('returns 403 Forbidden when authenticated user lacks required permission', async () => {
+      // MEMBER lacks seller.inventory.manage
+      const req = new NextRequest(
+        `http://localhost:3000/api/v1/seller-os/inventory/${victimInventoryItemId}/transfer`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': attackerTenantId,
-            Authorization: `Bearer ${attackerSessionToken}`,
+            'x-tenant-id': victimTenantId,
+            Cookie: `${SESSION_COOKIE_NAME}=${memberSessionToken}`,
           },
           body: JSON.stringify({
             workspaceId: victimWorkspaceId,
-            targetStatus: 'SUSPENDED',
-            reason: 'Malicious shutdown',
+            toLocationId: attackerLocId,
           }),
         }
       );
-      const suspRes = await transitionWorkspaceApi(suspReq);
-      expect([403, 404]).toContain(suspRes.status);
+      const res = await transferInventoryApi(req, {
+        params: Promise.resolve({ itemId: victimInventoryItemId }),
+      });
+      expect(res.status).toBe(403);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.error.code).toBe('FORBIDDEN');
     });
 
-    it('strictly forbids Attacker from modifying Victim staff members', async () => {
-      const patchReq = new NextRequest(
-        `http://localhost:3000/api/v1/seller-os/staff/${victimStaffMembershipId}`,
+    // 3. 403 wrong tenant
+    it('returns 403 Forbidden when user attempts access to another tenant', async () => {
+      const req = new NextRequest(
+        `http://localhost:3000/api/v1/seller-os/overview?workspaceId=${victimWorkspaceId}`,
         {
-          method: 'PATCH',
+          headers: {
+            'x-tenant-id': victimTenantId,
+            Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
+          },
+        }
+      );
+      const res = await getOverviewApi(req);
+      expect(res.status).toBe(403);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.error.code).toBe('FORBIDDEN');
+    });
+
+    // 4. 403 / 404 wrong seller workspace
+    it('returns 403/404 when querying victim workspace under attacker tenant', async () => {
+      const req = new NextRequest(
+        `http://localhost:3000/api/v1/seller-os/workspace?workspaceId=${victimWorkspaceId}`,
+        {
+          headers: {
+            'x-tenant-id': attackerTenantId,
+            Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
+          },
+        }
+      );
+      const res = await getWorkspaceApi(req);
+      expect([403, 404]).toContain(res.status);
+    });
+
+    // 5. 403 wrong store (cross-store transfer blocked)
+    it('returns 403 Forbidden when attempting cross-store inventory transfer within workspace', async () => {
+      // Create a second store for victim tenant
+      const catalog = getCatalogContainer();
+      const secondStoreId = createEntityId<StoreId>('store_isfahan_branch_two');
+      await catalog.storeRepo.save(
+        createEntityId<TenantId>(victimTenantId),
+        Store.create({
+          id: secondStoreId,
+          tenantId: createEntityId<TenantId>(victimTenantId),
+          name: 'Isfahan Branch 2',
+          code: 'ISF-02',
+        }).unwrap()
+      );
+
+      // Create an inventory item at secondStoreId
+      const inventory = getInventoryContainer();
+      const secondItem = InventoryItem.intake({
+        tenantId: createEntityId<TenantId>(victimTenantId),
+        storeId: secondStoreId,
+        productVariantId: createEntityId<ProductVariantId>('var_isfahan_ring_18k'),
+        sku: SKU.create('ISF-RNG-BRANCH2').unwrap(),
+        serialNumber: 'SN-ISF-2001',
+        locationId: createEntityId<InventoryLocationId>('loc_temp'),
+        grossWeight: Weight.fromGrams('5.0').unwrap(),
+        goldWeight: Weight.fromGrams('3.75').unwrap(),
+        purity: GoldPurity.K18,
+        actor: ActorReference.system(),
+      }).unwrap().item;
+      await inventory.itemRepo.save(secondItem);
+
+      // Victim attempts to transfer secondItem (belonging to secondStoreId) using victimWorkspaceId (bound to victimStoreId)
+      const transReq = new NextRequest(
+        `http://localhost:3000/api/v1/seller-os/inventory/${secondItem.id}/transfer`,
+        {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': attackerTenantId,
-            Authorization: `Bearer ${attackerSessionToken}`,
+            'x-tenant-id': victimTenantId,
+            Cookie: `${SESSION_COOKIE_NAME}=${victimSessionToken}`,
           },
           body: JSON.stringify({
-            role: 'MEMBER',
-            status: 'SUSPENDED',
+            workspaceId: victimWorkspaceId,
+            toLocationId: attackerLocId,
           }),
         }
       );
 
-      const patchRes = await updateStaffApi(patchReq, {
-        params: Promise.resolve({ id: victimStaffMembershipId }),
+      const transRes = await transferInventoryApi(transReq, {
+        params: Promise.resolve({ itemId: secondItem.id }),
       });
-      expect([403, 404]).toContain(patchRes.status);
+      expect([403, 404]).toContain(transRes.status);
     });
 
-    it('strictly forbids Attacker from transferring Victim inventory items', async () => {
-      // Attacker attempts to transfer victim's item to attacker's location
+    // 6. 403 / 404 wrong inventory ownership (IDOR transfer)
+    it('returns 403/404 when attacker attempts to transfer victim inventory item', async () => {
       const transReq = new NextRequest(
         `http://localhost:3000/api/v1/seller-os/inventory/${victimInventoryItemId}/transfer`,
         {
@@ -359,7 +409,7 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': attackerTenantId,
-            Authorization: `Bearer ${attackerSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
           },
           body: JSON.stringify({
             workspaceId: attackerWorkspaceId,
@@ -375,7 +425,8 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
       expect([403, 404]).toContain(transRes.status);
     });
 
-    it('strictly forbids Attacker from modifying Victim listings', async () => {
+    // 7. 403 / 404 wrong listing ownership
+    it('returns 403/404 when attacker attempts to modify victim listing', async () => {
       const patchReq = new NextRequest(
         `http://localhost:3000/api/v1/seller-os/listings/${victimListingId}`,
         {
@@ -383,7 +434,7 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': attackerTenantId,
-            Authorization: `Bearer ${attackerSessionToken}`,
+            Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
           },
           body: JSON.stringify({
             workspaceId: attackerWorkspaceId,
@@ -395,6 +446,30 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
 
       const patchRes = await updateListingApi(patchReq, {
         params: Promise.resolve({ id: victimListingId }),
+      });
+      expect([403, 404]).toContain(patchRes.status);
+    });
+
+    // 8. 403 / 404 wrong staff ownership
+    it('returns 403/404 when attacker attempts to modify victim staff member', async () => {
+      const patchReq = new NextRequest(
+        `http://localhost:3000/api/v1/seller-os/staff/${victimStaffMembershipId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-id': attackerTenantId,
+            Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
+          },
+          body: JSON.stringify({
+            role: 'MEMBER',
+            status: 'SUSPENDED',
+          }),
+        }
+      );
+
+      const patchRes = await updateStaffApi(patchReq, {
+        params: Promise.resolve({ id: victimStaffMembershipId }),
       });
       expect([403, 404]).toContain(patchRes.status);
     });
