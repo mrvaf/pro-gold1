@@ -1,0 +1,20 @@
+{
+  "name": "v-gold-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "npm run --workspaces --if-present typecheck && tsc -p tests/tsconfig.json --noEmit",
+    "build": "npm run --workspace=packages/core build && npm run --workspace=packages/database build && npm run --workspace=packages/ai-gateway build && npm run --workspace=apps/web build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}
