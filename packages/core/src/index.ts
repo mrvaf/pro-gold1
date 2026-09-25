@@ -156,3 +156,11 @@ export * from './domain/rfq/rfq-proposal.js';
 export * from './domain/rfq/rfq-message.js';
 export * from './domain/rfq/custom-manufacturing-rfq.js';
 export * from './ports/rfq.port.js';
+
+// AI Packaging & Box Studio (Stage 16)
+export * from './domain/packaging/packaging-errors.js';
+export * from './domain/packaging/box-dimensions.js';
+export * from './domain/packaging/packaging-cost-model.js';
+export * from './domain/packaging/packaging-specification.js';
+export * from './ports/packaging.port.js';
+

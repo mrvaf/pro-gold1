@@ -91,3 +91,9 @@ export * from './repositories/drizzle-try-on-session.repository.js';
 export * from './schema/custom-manufacturing-rfqs.js';
 export * from './adapters/in-memory-rfq.repository.js';
 export * from './repositories/drizzle-rfq.repository.js';
+
+// AI Packaging & Box Studio (Stage 16)
+export * from './schema/packaging.js';
+export * from './adapters/in-memory-packaging.repository.js';
+export * from './repositories/drizzle-packaging.repository.js';
+

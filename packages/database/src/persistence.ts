@@ -26,6 +26,7 @@ import type {
   Studio3DStoragePort,
   TryOnSessionRepositoryPort,
   RfqRepositoryPort,
+  PackagingRepositoryPort,
 } from '@v-gold/core';
 import { createDatabaseConfigFromEnv } from './config.js';
 import { InMemoryDesignSessionRepository } from './adapters/in-memory-design-session.repository.js';
@@ -34,6 +35,7 @@ import { InMemoryVectorIndexRepository } from './adapters/in-memory-vector-index
 import { InMemoryStudio3DAssetRepository } from './adapters/in-memory-studio-3d-asset.repository.js';
 import { InMemoryTryOnSessionRepository } from './adapters/in-memory-try-on-session.repository.js';
 import { InMemoryRfqRepository } from './adapters/in-memory-rfq.repository.js';
+import { InMemoryPackagingRepository } from './adapters/in-memory-packaging.repository.js';
 import { MockStudio3DStorageAdapter } from './adapters/mock-studio-3d-storage.adapter.js';
 import { DrizzleDesignSessionRepository } from './repositories/drizzle-design-session.repository.js';
 import { DrizzleDesignConceptRepository } from './repositories/drizzle-design-concept.repository.js';
@@ -41,6 +43,7 @@ import { DrizzleProductFeatureEmbeddingRepository } from './repositories/drizzle
 import { DrizzleStudio3DAssetRepository } from './repositories/drizzle-studio-3d-asset.repository.js';
 import { DrizzleTryOnSessionRepository } from './repositories/drizzle-try-on-session.repository.js';
 import { DrizzleRfqRepository } from './repositories/drizzle-rfq.repository.js';
+import { DrizzlePackagingRepository } from './repositories/drizzle-packaging.repository.js';
 import { InMemoryFxRateRepository } from './adapters/in-memory-fx-rate.repository.js';
 import { InMemoryInventoryItemRepository } from './adapters/in-memory-inventory-item.repository.js';
 import { InMemoryInventoryLocationRepository } from './adapters/in-memory-inventory-location.repository.js';
@@ -102,6 +105,7 @@ import {
   TenantScopedStudio3DAssetRepository,
   TenantScopedTryOnSessionRepository,
   TenantScopedRfqRepository,
+  TenantScopedPackagingRepository,
 } from './pg/tenant-scoped.js';
 
 /**
@@ -145,6 +149,7 @@ export interface Persistence {
   readonly studio3dStorage: Studio3DStoragePort;
   readonly tryOnSessionRepository: TryOnSessionRepositoryPort;
   readonly rfqRepository: RfqRepositoryPort;
+  readonly packagingRepository: PackagingRepositoryPort;
   close(): Promise<void>;
 }
 
@@ -184,6 +189,7 @@ const createInMemoryPersistence = (): Persistence => {
     studio3dStorage: new MockStudio3DStorageAdapter(),
     tryOnSessionRepository: new InMemoryTryOnSessionRepository(),
     rfqRepository: new InMemoryRfqRepository(),
+    packagingRepository: new InMemoryPackagingRepository(),
     close: async (): Promise<void> => {
       // in-memory: nothing to release
     },
@@ -265,6 +271,10 @@ const createDrizzlePersistence = (connection: PgConnection): Persistence => {
     ),
     rfqRepository: new TenantScopedRfqRepository(
       new DrizzleRfqRepository(db),
+      db
+    ),
+    packagingRepository: new TenantScopedPackagingRepository(
+      new DrizzlePackagingRepository(db),
       db
     ),
     close: async (): Promise<void> => {

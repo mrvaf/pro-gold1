@@ -68,6 +68,9 @@ import type {
   CustomManufacturingRfq,
   RfqId,
   RfqRepositoryPort,
+  PackagingSpecification,
+  PackagingSpecId,
+  PackagingRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -652,5 +655,34 @@ export class TenantScopedRfqRepository implements RfqRepositoryPort {
 
   count(tenantId?: TenantId): Promise<number> {
     return withTenantContext(this.db, tenantId, () => this.inner.count(tenantId));
+  }
+}
+
+export class TenantScopedPackagingRepository implements PackagingRepositoryPort {
+  constructor(
+    private readonly inner: PackagingRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(spec: PackagingSpecification): Promise<void> {
+    return withTenantContext(this.db, spec.tenantId, () => this.inner.save(spec));
+  }
+
+  findById(id: PackagingSpecId, tenantId: TenantId): Promise<PackagingSpecification | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  findByProductId(productId: string, tenantId: TenantId): Promise<PackagingSpecification[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.findByProductId(productId, tenantId)
+    );
+  }
+
+  findByTenantId(tenantId: TenantId): Promise<PackagingSpecification[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findByTenantId(tenantId));
+  }
+
+  delete(id: PackagingSpecId, tenantId: TenantId): Promise<boolean> {
+    return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
   }
 }

@@ -629,3 +629,26 @@ Stage 15 of the V-GOLD roadmap introduces Custom Manufacturing and Request for Q
    - `PATCH /api/v1/rfq/[id]/proposals`: Accepts a selected proposal and assigns goldsmith.
    - `POST /api/v1/rfq/[id]/messages`: Dispatches in-band message between participants.
 
+## ADR-0057: AI Packaging & Box Studio
+
+### Context
+Stage 16 introduces custom luxury packaging and box specifications. Fine jewelry items require custom physical dimensions, structural constraints (dieline board thickness, creasing matrix, insert cushion styles), material cost calculations (Leather, Velvet, Solid Wood, Hardcover Paper, Lacquered Wood), and AI packaging rendering generation.
+
+### Decision
+1. **Domain Models & Cost Calculation**:
+   - `BoxDimensions`: Value object enforcing bounding dimensions (Width/Length: 20mm-500mm, Height: 10mm-300mm) using `InvalidPackagingDimensionsError` and computing exterior surface area and interior volume.
+   - `PackagingCostCalculator`: Computes production cost based on surface area units, material rates per 100 cm², luxury tier multipliers (`STANDARD`: 1.0, `PREMIUM`: 1.5, `BESPOKE_LUXURY`: 2.2), and fixed tooling setup additions (custom dieline plates, hot foil stamping).
+   - `PackagingSpecification`: Aggregate root encapsulating physical dimensions, material, colors, dieline specs, and generated AI visual previews.
+
+2. **Multi-Tenant Row-Level Security**:
+   - Database table `packaging_specifications` with migration `0019_ai_packaging_foundation.sql`.
+   - RLS policy `packaging_specifications_tenant_isolation` guarantees zero cross-tenant leakage.
+   - Repository `TenantScopedPackagingRepository` enforces tenant session context.
+
+3. **REST API**:
+   - `POST /api/v1/packaging`: Creates new packaging specification under `catalog.manage` permission.
+   - `GET /api/v1/packaging`: Lists packaging specifications (optionally filtered by `productId`) under `catalog.read`.
+   - `GET /api/v1/packaging/[id]`: Fetches single specification.
+   - `POST /api/v1/packaging/[id]/preview`: Generates AI visual preview URL.
+
+
