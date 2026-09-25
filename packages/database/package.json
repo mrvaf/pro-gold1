@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && rm -rf dist/migrations && cp -r src/migrations dist/migrations",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-migrations.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
