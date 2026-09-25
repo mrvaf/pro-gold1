@@ -675,4 +675,25 @@ Stage 17 introduces core transactional commerce: Carts, Orders, Line Items, Atom
    - `GET /api/v1/commerce/orders`: Lists user order history.
    - `POST /api/v1/commerce/orders/[id]/pay`: Executes payment provider verification, commits stock reservations, and transitions order status to `PAID`.
 
+## ADR-0059: AI Content Studio & Factual Grounding Verification
+
+### Context
+Stage 18 introduces automated marketing, e-commerce, and certificate copy generation (descriptions, Instagram social captions, and certificates of authenticity). Because jewelry and gold products carry strict legal and statutory requirements, generated content must never hallucinate gold karat fineness, metal types, or gemstone classifications.
+
+### Decision
+1. **Domain Models & Factual Grounding Verification**:
+   - `ContentGroundingValidator`: Validates that generated headlines and text bodies strictly match authoritative technical specifications (metal types, gold fineness/karat ratings, and gemstone classifications). Any contradiction triggers `ContentGroundingViolationError` (HTTP 422).
+   - `ContentAsset`: Aggregate root representing generated copy across formats (`PRODUCT_DESCRIPTION`, `SOCIAL_CAPTION`, `CERTIFICATE_OF_AUTHENTICITY`) and supported locales (`fa-IR`, `en-US`, `ar-AE`).
+
+2. **Multi-Tenant Row-Level Security**:
+   - Schema table `content_assets` created in migration `0021_ai_content_studio_foundation.sql`.
+   - Restrictive PostgreSQL RLS policy `content_assets_tenant_isolation` guarantees strict tenant boundaries.
+   - Wired with `TenantScopedContentStudioRepository` in persistence.
+
+3. **REST API**:
+   - `POST /api/v1/content-studio`: Generates and verifies grounded content asset under `catalog.manage`.
+   - `GET /api/v1/content-studio`: Lists tenant content assets (optionally filtered by `productId`) under `catalog.read`.
+   - `GET /api/v1/content-studio/[id]`: Retrieves specific content asset.
+
+
 

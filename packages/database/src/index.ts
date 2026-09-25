@@ -102,3 +102,9 @@ export * from './schema/commerce.js';
 export * from './adapters/in-memory-commerce.repository.js';
 export * from './repositories/drizzle-commerce.repository.js';
 
+// AI Content Studio (Stage 18)
+export * from './schema/content-assets.js';
+export * from './adapters/in-memory-content-studio.repository.js';
+export * from './repositories/drizzle-content-studio.repository.js';
+
+

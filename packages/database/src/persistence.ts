@@ -30,6 +30,7 @@ import type {
   OrderRepositoryPort,
   CartRepositoryPort,
   StockReservationRepositoryPort,
+  ContentStudioRepositoryPort,
 } from '@v-gold/core';
 import { createDatabaseConfigFromEnv } from './config.js';
 import { InMemoryDesignSessionRepository } from './adapters/in-memory-design-session.repository.js';
@@ -44,6 +45,7 @@ import {
   InMemoryCartRepository,
   InMemoryStockReservationRepository,
 } from './adapters/in-memory-commerce.repository.js';
+import { InMemoryContentStudioRepository } from './adapters/in-memory-content-studio.repository.js';
 import { MockStudio3DStorageAdapter } from './adapters/mock-studio-3d-storage.adapter.js';
 import { DrizzleDesignSessionRepository } from './repositories/drizzle-design-session.repository.js';
 import { DrizzleDesignConceptRepository } from './repositories/drizzle-design-concept.repository.js';
@@ -57,6 +59,7 @@ import {
   DrizzleCartRepository,
   DrizzleStockReservationRepository,
 } from './repositories/drizzle-commerce.repository.js';
+import { DrizzleContentStudioRepository } from './repositories/drizzle-content-studio.repository.js';
 import { InMemoryFxRateRepository } from './adapters/in-memory-fx-rate.repository.js';
 import { InMemoryInventoryItemRepository } from './adapters/in-memory-inventory-item.repository.js';
 import { InMemoryInventoryLocationRepository } from './adapters/in-memory-inventory-location.repository.js';
@@ -122,6 +125,7 @@ import {
   TenantScopedOrderRepository,
   TenantScopedCartRepository,
   TenantScopedStockReservationRepository,
+  TenantScopedContentStudioRepository,
 } from './pg/tenant-scoped.js';
 
 /**
@@ -169,6 +173,7 @@ export interface Persistence {
   readonly orderRepository: OrderRepositoryPort;
   readonly cartRepository: CartRepositoryPort;
   readonly stockReservationRepository: StockReservationRepositoryPort;
+  readonly contentStudioRepository: ContentStudioRepositoryPort;
   close(): Promise<void>;
 }
 
@@ -212,6 +217,7 @@ const createInMemoryPersistence = (): Persistence => {
     orderRepository: new InMemoryOrderRepository(),
     cartRepository: new InMemoryCartRepository(),
     stockReservationRepository: new InMemoryStockReservationRepository(),
+    contentStudioRepository: new InMemoryContentStudioRepository(),
     close: async (): Promise<void> => {
       // in-memory: nothing to release
     },
@@ -309,6 +315,10 @@ const createDrizzlePersistence = (connection: PgConnection): Persistence => {
     ),
     stockReservationRepository: new TenantScopedStockReservationRepository(
       new DrizzleStockReservationRepository(db),
+      db
+    ),
+    contentStudioRepository: new TenantScopedContentStudioRepository(
+      new DrizzleContentStudioRepository(db),
       db
     ),
     close: async (): Promise<void> => {

@@ -180,3 +180,10 @@ export * from './domain/commerce/order-line.js';
 export * from './domain/commerce/order.js';
 export * from './ports/commerce.port.js';
 
+// AI Content Studio (Stage 18)
+export * from './domain/content-studio/content-studio-errors.js';
+export * from './domain/content-studio/content-grounding.validator.js';
+export * from './domain/content-studio/content-asset.js';
+export * from './ports/content-studio.port.js';
+
+

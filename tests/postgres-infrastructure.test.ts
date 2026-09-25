@@ -110,7 +110,7 @@ beforeAll(async () => {
   );
 
   const result = await runMigrations(adminPool);
-  expect(result.applied.length).toBe(20);
+  expect(result.applied.length).toBe(21);
 
   appPool = new Pool({ ...appConfig });
   appDb = drizzle(appPool);
@@ -152,13 +152,14 @@ describe('Stage 8.3 — migrations (ADR-0048)', () => {
       '0018_custom_rfq_foundation.sql',
       '0019_ai_packaging_foundation.sql',
       '0020_commerce_foundation.sql',
+      '0021_ai_content_studio_foundation.sql',
     ]);
   });
 
   it('is idempotent — a second run applies nothing', async () => {
     const result = await runMigrations(adminPool);
     expect(result.applied).toEqual([]);
-    expect(result.alreadyApplied.length).toBe(20);
+    expect(result.alreadyApplied.length).toBe(21);
   });
 
   it('enables + forces RLS with one tenant-isolation policy on every tenant-scoped table', async () => {

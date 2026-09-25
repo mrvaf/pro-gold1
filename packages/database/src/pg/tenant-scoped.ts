@@ -80,6 +80,9 @@ import type {
   StockReservation,
   StockReservationId,
   StockReservationRepositoryPort,
+  ContentAsset,
+  ContentAssetId,
+  ContentStudioRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -774,5 +777,34 @@ export class TenantScopedStockReservationRepository implements StockReservationR
 
   releaseExpired(tenantId: TenantId): Promise<number> {
     return withTenantContext(this.db, tenantId, () => this.inner.releaseExpired(tenantId));
+  }
+}
+
+export class TenantScopedContentStudioRepository implements ContentStudioRepositoryPort {
+  constructor(
+    private readonly inner: ContentStudioRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(asset: ContentAsset): Promise<void> {
+    return withTenantContext(this.db, asset.tenantId, () => this.inner.save(asset));
+  }
+
+  findById(id: ContentAssetId, tenantId: TenantId): Promise<ContentAsset | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  findByProductId(productId: string, tenantId: TenantId): Promise<ContentAsset[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.findByProductId(productId, tenantId)
+    );
+  }
+
+  findByTenantId(tenantId: TenantId): Promise<ContentAsset[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findByTenantId(tenantId));
+  }
+
+  delete(id: ContentAssetId, tenantId: TenantId): Promise<boolean> {
+    return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
   }
 }

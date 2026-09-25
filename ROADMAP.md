@@ -282,11 +282,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 18 — AI Content Studio
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
   - Automated product description, Instagram/social caption, and certificate copy generation.
   - Factual grounding check: Copies must match registered karat, weight, and gemstones.
-* **Completion Criteria:** Grounding validation rejects hallucinated specs; multi-language output validated.
+  - Multi-language output (fa-IR, en-US, ar-AE).
+  - Migration 0021_ai_content_studio_foundation.sql with PostgreSQL Row-Level Security isolation.
+  - REST endpoints: `GET /api/v1/content-studio`, `POST /api/v1/content-studio`, `GET /api/v1/content-studio/[id]`.
+* **Completion Criteria:** 636 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0059 recorded; grounding validation rejects hallucinated specs; multi-language output validated.
 
 ---
 

@@ -27,4 +27,6 @@ export * from './try-on-sessions.js';
 export * from './custom-manufacturing-rfqs.js';
 export * from './packaging.js';
 export * from './commerce.js';
+export * from './content-assets.js';
+
 
