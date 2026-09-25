@@ -81,3 +81,8 @@ export * from './schema/studio-3d-assets.js';
 export * from './adapters/in-memory-studio-3d-asset.repository.js';
 export * from './adapters/mock-studio-3d-storage.adapter.js';
 export * from './repositories/drizzle-studio-3d-asset.repository.js';
+
+// Virtual Try-On Infrastructure (Stage 14)
+export * from './schema/try-on-sessions.js';
+export * from './adapters/in-memory-try-on-session.repository.js';
+export * from './repositories/drizzle-try-on-session.repository.js';

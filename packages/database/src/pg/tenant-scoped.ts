@@ -62,6 +62,9 @@ import type {
   Studio3DAsset,
   Studio3DAssetId,
   Studio3DAssetRepositoryPort,
+  TryOnSession,
+  TryOnSessionId,
+  TryOnSessionRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -583,6 +586,35 @@ export class TenantScopedStudio3DAssetRepository implements Studio3DAssetReposit
   }
 
   delete(id: Studio3DAssetId, tenantId?: TenantId): Promise<void> {
+    return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
+  }
+
+  count(tenantId?: TenantId): Promise<number> {
+    return withTenantContext(this.db, tenantId, () => this.inner.count(tenantId));
+  }
+}
+
+export class TenantScopedTryOnSessionRepository implements TryOnSessionRepositoryPort {
+  constructor(
+    private readonly inner: TryOnSessionRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(session: TryOnSession): Promise<void> {
+    return withTenantContext(this.db, session.tenantId, () => this.inner.save(session));
+  }
+
+  findById(id: TryOnSessionId, tenantId?: TenantId): Promise<TryOnSession | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  listActiveByProduct(productId: ProductId, tenantId: TenantId): Promise<TryOnSession[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.listActiveByProduct(productId, tenantId)
+    );
+  }
+
+  delete(id: TryOnSessionId, tenantId?: TenantId): Promise<void> {
     return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
   }
 

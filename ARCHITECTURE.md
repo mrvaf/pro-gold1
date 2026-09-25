@@ -580,3 +580,26 @@ Stage 13 of the V-GOLD roadmap introduces the 3D Jewelry Studio foundation, enab
 4. **REST API**:
    - `POST /api/v1/studio-3d/assets`: Registers new 3D model metadata under `catalog.manage` permission.
    - `GET /api/v1/studio-3d/assets/[id]`: Generates signed preview payload under `catalog.read` permission.
+
+## ADR-0055: Virtual Try-On Infrastructure, Biometric Anchoring & Privacy Lifecycles
+
+### Context
+Stage 14 of the V-GOLD roadmap introduces Virtual Try-On (AR) capabilities. Users can configure biometric anchoring parameters (ring finger millimeter sizing, wrist circumference, and positional offsets) to preview jewelry models on mobile and desktop web without persistent leakage of biometric or unauthorized 3D assets.
+
+### Decision
+1. **Domain Isolation & Biometric Invariants**:
+   - `BodyPartAnchoring`: Validates scale factors (0.5 to 2.5), finger millimeter sizes (10mm to 30mm), and wrist circumferences (100mm to 300mm) using `InvalidAnchoringScaleError`.
+   - `TryOnSession`: Manages state machine (`ACTIVE`, `EXPIRED`, `COMPLETED`) with an explicit lifespan (default 600–900 seconds) to ensure strict privacy compliance.
+   - Accessing expired sessions triggers `TryOnSessionExpiredError` and forces automatic status transition to `EXPIRED`.
+
+2. **Temporary Signed URL Pipeline**:
+   - Every try-on session generates a time-bound signed URL tied to the session duration, preventing direct exposure of the underlying asset storage paths.
+
+3. **Multi-Tenant Row-Level Security**:
+   - Table `try_on_sessions` with migration `0017_virtual_try_on_foundation.sql`.
+   - RLS policy `try_on_sessions_tenant_isolation` guarantees strict tenant boundaries.
+   - Persistence layer uses `TenantScopedTryOnSessionRepository`.
+
+4. **REST API**:
+   - `POST /api/v1/try-on/sessions`: Initiates an ephemeral try-on session under authenticated catalog reader context.
+   - `GET /api/v1/try-on/sessions/[id]`: Returns session state and verifies active status.

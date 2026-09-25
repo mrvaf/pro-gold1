@@ -233,11 +233,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 14 — Virtual Try-On Infrastructure
-* **Status:** **PENDING**
+* **Status:** **DONE**
 * **Focus:**
   - AR/Try-On configuration models (ring finger sizing, wrist scale, ear anchoring).
   - Signed temporary asset URLs and privacy compliance.
-* **Completion Criteria:** Try-on session lifecycle tests pass; zero persistent unauthorized asset leaks.
+  - Ephemeral session lifecycles and state machine transitions.
+  - Migration 0017_virtual_try_on_foundation.sql with PostgreSQL Row-Level Security.
+  - REST endpoints `POST /api/v1/try-on/sessions` and `GET /api/v1/try-on/sessions/[id]`.
+* **Completion Criteria:** 622 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0055 recorded; try-on session lifecycle tests pass; zero persistent unauthorized asset leaks.
 
 ---
 

@@ -142,3 +142,9 @@ export * from './domain/studio-3d/bounding-box-3d.js';
 export * from './domain/studio-3d/pbr-material-map.js';
 export * from './domain/studio-3d/studio-3d-asset.js';
 export * from './ports/studio-3d.port.js';
+
+// Virtual Try-On Infrastructure (Stage 14)
+export * from './domain/try-on/try-on-errors.js';
+export * from './domain/try-on/body-part-anchoring.js';
+export * from './domain/try-on/try-on-session.js';
+export * from './ports/try-on.port.js';
