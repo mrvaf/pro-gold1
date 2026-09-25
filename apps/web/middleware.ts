@@ -7,13 +7,18 @@ export interface SecurityHeadersOptions {
 }
 
 function getSecurityHeaders(options: SecurityHeadersOptions = {}): Record<string, string> {
+  const isDev = options.isProduction === false;
+  const scriptSrc = isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self' 'unsafe-inline'";
+
   const defaultCsp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https:",
+    "connect-src 'self' https: ws: wss:",
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",

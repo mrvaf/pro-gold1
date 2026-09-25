@@ -12,8 +12,11 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="fa" dir="rtl">
-      <body style={{ margin: 0, padding: 0, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <html lang="fa" dir="rtl" suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        style={{ margin: 0, padding: 0, fontFamily: 'system-ui, -apple-system, sans-serif' }}
+      >
         {children}
       </body>
     </html>
