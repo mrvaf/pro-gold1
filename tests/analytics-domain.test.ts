@@ -77,12 +77,12 @@ describe('Stage 21 — Analytics & Business Intelligence Domain Logic', () => {
     // Mock inventory items: 1 sold, 1 available
     const item1 = {
       status: 'SOLD',
-      grossWeight: Weight.fromGrams(10).unwrap(),
+      grossWeight: Weight.fromGrams('10').unwrap(),
     } as any;
 
     const item2 = {
       status: 'AVAILABLE',
-      grossWeight: Weight.fromGrams(15).unwrap(),
+      grossWeight: Weight.fromGrams('15').unwrap(),
     } as any;
 
     const dashboard = AnalyticsAggregator.aggregate({

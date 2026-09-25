@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { InMemoryCache } from '../packages/core/src/common/cache.js';
+import { createEntityId } from '../packages/core/src/common/id.js';
 import {
   paginateArray,
   parsePaginationParams,
@@ -96,12 +97,12 @@ describe('Stage 22 — Performance Optimization & Scaling Tests', () => {
       }).unwrap();
 
       const mockObservation = MarketObservation.create({
-        id: 'obs-gold-1',
-        sourceId: 'source-1',
-        instrumentId: 'inst-gold-usd',
+        id: createEntityId('obs-gold-1'),
+        sourceId: createEntityId('source-1'),
+        instrumentId: createEntityId('inst-gold-usd'),
         price: mockPrice,
+        quality: 'REAL_TIME',
         observedAt: new Date(),
-        rawPayload: '{}',
       }).unwrap();
 
       const findLatestMock = vi.fn().mockResolvedValue(mockObservation);

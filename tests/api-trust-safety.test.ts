@@ -14,7 +14,8 @@ describe('Stage 20 — Trust, Safety & Seller Verification REST API', () => {
       ok: true,
       tenantId: 'tenant_trust_1',
       actorId: 'usr_trust_1',
-      session: {} as any,
+      identity: {} as any,
+      membership: {} as any,
     });
 
     // 1. Submit Guild License

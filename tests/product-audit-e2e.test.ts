@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { Money } from '../packages/core/src/domain/finance/money.js';
 import { GoldPurity } from '../packages/core/src/domain/material/gold-purity.js';
 import { Weight } from '../packages/core/src/domain/material/weight.js';
-import { Currency } from '../packages/core/src/domain/finance/currency.js';
+import { createEntityId } from '../packages/core/src/common/id.js';
+import type { TenantId } from '../packages/core/src/domain/tenant/tenant.js';
 import { MarketPrice } from '../packages/core/src/domain/market-data/market-price.js';
 import { MarketObservation } from '../packages/core/src/domain/market-data/market-observation.js';
 import { PricingEngine } from '../packages/core/src/domain/pricing/pricing-engine.js';
@@ -15,7 +16,7 @@ import { createPersistence } from '../packages/database/src/persistence.js';
 describe('Stage 25 — Comprehensive Full-System Product Audit', () => {
   describe('Invariants Audit: Financial & Gold Calculation Precision', () => {
     it('guarantees zero rounding drift on multi-decimal gold price evaluation', () => {
-      const purity = GoldPurity.fromKarat(18).unwrap();
+      const purity = GoldPurity.fromKarat('18').unwrap();
       const weight = Weight.fromGrams('10.500').unwrap();
 
       const price = MarketPrice.create({
@@ -26,19 +27,20 @@ describe('Stage 25 — Comprehensive Full-System Product Audit', () => {
 
       const now = new Date();
       const obs = MarketObservation.create({
-        id: 'obs-e2e-audit',
-        sourceId: 'src-lbma',
-        instrumentId: 'inst-xau-usd',
+        id: createEntityId('obs-e2e-audit'),
+        sourceId: createEntityId('src-lbma'),
+        instrumentId: createEntityId('inst-xau-usd'),
         price,
         quality: 'REAL_TIME',
         observedAt: now,
-        rawPayload: '{}',
       }).unwrap();
 
+      const tenantId = createEntityId<TenantId>('tenant-audit');
+
       const rule = PricingRule.create({
-        tenantId: 'tenant-audit',
+        tenantId,
         name: 'Standard Gold Retail Rule',
-        pricingMethod: 'DYNAMIC_LIVE_RATE',
+        effectiveFrom: new Date('2024-01-01T00:00:00Z'),
         config: {
           makingCharge: { type: 'PER_GRAM', rate: '12.50' },
           margin: { type: 'PERCENTAGE', rate: '0.08' },
@@ -48,7 +50,7 @@ describe('Stage 25 — Comprehensive Full-System Product Audit', () => {
         },
       }).unwrap();
 
-      const freshness = new MarketDataFreshnessPolicy({ maxAgeSeconds: 3600 });
+      const freshness = new MarketDataFreshnessPolicy();
 
       const result = PricingEngine.calculate({
         weight,
@@ -57,7 +59,7 @@ describe('Stage 25 — Comprehensive Full-System Product Audit', () => {
         marketObservation: obs,
         freshnessPolicy: freshness,
         rule,
-        tenantId: 'tenant-audit',
+        tenantId,
         timestamp: now,
       }).unwrap();
 

@@ -18,9 +18,7 @@ import {
 } from '@v-gold/core';
 
 describe('Stage 12 Budget-Aware Pricing Engine Unit Tests', () => {
-  const freshnessPolicy = new MarketDataFreshnessPolicy({
-    maxAgeMinutes: 60,
-  });
+  const freshnessPolicy = new MarketDataFreshnessPolicy();
 
   // Spot gold price: 2000 USD per troy ounce
   const obs = MarketObservation.create({

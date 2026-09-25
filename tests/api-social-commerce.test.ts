@@ -12,7 +12,8 @@ describe('Stage 19 — Social Commerce & Multi-Platform Publishing REST API', ()
       ok: true,
       tenantId: 'tenant_soc_1',
       actorId: 'usr_soc_1',
-      session: {} as any,
+      identity: {} as any,
+      membership: {} as any,
     });
 
     // 1. Connect Channel
@@ -81,7 +82,8 @@ describe('Stage 19 — Social Commerce & Multi-Platform Publishing REST API', ()
       ok: true,
       tenantId: 'tenant_soc_1',
       actorId: 'usr_soc_1',
-      session: {} as any,
+      identity: {} as any,
+      membership: {} as any,
     });
 
     const reqChannel = new NextRequest('http://localhost:3000/api/v1/social/channels', {

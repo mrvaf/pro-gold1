@@ -9,7 +9,8 @@ describe('Stage 21 — Analytics & Business Intelligence REST API', () => {
       ok: true,
       tenantId: 'tenant_analytics_api_1',
       actorId: 'usr_an_1',
-      session: {} as any,
+      identity: {} as any,
+      membership: {} as any,
     });
 
     const req = new NextRequest('http://localhost:3000/api/v1/analytics/performance');
@@ -29,7 +30,8 @@ describe('Stage 21 — Analytics & Business Intelligence REST API', () => {
       ok: true,
       tenantId: 'tenant_analytics_api_1',
       actorId: 'usr_an_1',
-      session: {} as any,
+      identity: {} as any,
+      membership: {} as any,
     });
 
     const req = new NextRequest('http://localhost:3000/api/v1/analytics/performance?from=invalid-date');
