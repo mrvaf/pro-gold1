@@ -55,6 +55,10 @@ import type {
   DesignConcept,
   DesignConceptId,
   DesignConceptRepositoryPort,
+  VectorSearchIndexPort,
+  ProductFeatureEmbedding,
+  FeatureVector,
+  VisualSearchResultItem,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -522,5 +526,35 @@ export class TenantScopedDesignConceptRepository implements DesignConceptReposit
 
   count(tenantId?: TenantId): Promise<number> {
     return withTenantContext(this.db, tenantId, () => this.inner.count(tenantId));
+  }
+}
+
+export class TenantScopedVectorSearchIndexRepository implements VectorSearchIndexPort {
+  constructor(
+    private readonly inner: VectorSearchIndexPort,
+    private readonly db: TenantDb
+  ) {}
+
+  indexProductEmbedding(item: ProductFeatureEmbedding): Promise<void> {
+    return withTenantContext(this.db, item.tenantId, () =>
+      this.inner.indexProductEmbedding(item)
+    );
+  }
+
+  searchSimilar(
+    tenantId: TenantId,
+    queryVector: FeatureVector,
+    limit?: number,
+    minSimilarity?: number
+  ): Promise<VisualSearchResultItem[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.searchSimilar(tenantId, queryVector, limit, minSimilarity)
+    );
+  }
+
+  deleteByProduct(productId: ProductId, tenantId: TenantId): Promise<void> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.deleteByProduct(productId, tenantId)
+    );
   }
 }

@@ -123,3 +123,10 @@ export * from './domain/ai-designer/token-accounting.js';
 export * from './domain/ai-designer/concept-status.js';
 export * from './domain/ai-designer/design-concept.js';
 export * from './ports/design-concept.repository.port.js';
+
+// Visual Search Foundations (Stage 11)
+export * from './domain/visual-search/visual-search-errors.js';
+export * from './domain/visual-search/feature-vector.js';
+export * from './domain/visual-search/visual-search-image.js';
+export * from './domain/visual-search/visual-search-result.js';
+export * from './ports/visual-search.port.js';

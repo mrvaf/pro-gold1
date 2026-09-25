@@ -197,11 +197,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 11 — Visual Search Engine
-* **Status:** **PENDING**
+* **Status:** **DONE**
 * **Focus:**
   - Image-based jewelry similarity search abstraction.
-  - Feature embedding vector indexing ports.
+  - Feature embedding vector indexing ports and cosine similarity math.
   - Attribute matching against live catalog.
+  - Path traversal and MIME-type validation.
+  - Row-Level Security for product feature embeddings.
+* **Completion Criteria:** 603 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0052 recorded; vector cosine similarity and tenant isolation verified.
 * **Completion Criteria:** Search endpoint validates file types, prevents path traversal, and returns ranked results.
 
 ---

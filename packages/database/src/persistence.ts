@@ -21,12 +21,15 @@ import type {
   UserRepositoryPort,
   DesignSessionRepositoryPort,
   DesignConceptRepositoryPort,
+  VectorSearchIndexPort,
 } from '@v-gold/core';
 import { createDatabaseConfigFromEnv } from './config.js';
 import { InMemoryDesignSessionRepository } from './adapters/in-memory-design-session.repository.js';
 import { InMemoryDesignConceptRepository } from './adapters/in-memory-design-concept.repository.js';
+import { InMemoryVectorIndexRepository } from './adapters/in-memory-vector-index.repository.js';
 import { DrizzleDesignSessionRepository } from './repositories/drizzle-design-session.repository.js';
 import { DrizzleDesignConceptRepository } from './repositories/drizzle-design-concept.repository.js';
+import { DrizzleProductFeatureEmbeddingRepository } from './repositories/drizzle-product-feature-embedding.repository.js';
 import { InMemoryFxRateRepository } from './adapters/in-memory-fx-rate.repository.js';
 import { InMemoryInventoryItemRepository } from './adapters/in-memory-inventory-item.repository.js';
 import { InMemoryInventoryLocationRepository } from './adapters/in-memory-inventory-location.repository.js';
@@ -84,6 +87,7 @@ import {
   TenantScopedTenantMembershipRepository,
   TenantScopedDesignSessionRepository,
   TenantScopedDesignConceptRepository,
+  TenantScopedVectorSearchIndexRepository,
 } from './pg/tenant-scoped.js';
 
 /**
@@ -122,6 +126,7 @@ export interface Persistence {
   readonly sellerWorkspaceRepository: SellerWorkspaceRepositoryPort;
   readonly designSessionRepository: DesignSessionRepositoryPort;
   readonly designConceptRepository: DesignConceptRepositoryPort;
+  readonly vectorSearchIndexRepository: VectorSearchIndexPort;
   close(): Promise<void>;
 }
 
@@ -156,6 +161,7 @@ const createInMemoryPersistence = (): Persistence => {
     sellerWorkspaceRepository: new InMemorySellerWorkspaceRepository(),
     designSessionRepository: new InMemoryDesignSessionRepository(),
     designConceptRepository: new InMemoryDesignConceptRepository(),
+    vectorSearchIndexRepository: new InMemoryVectorIndexRepository(),
     close: async (): Promise<void> => {
       // in-memory: nothing to release
     },
@@ -220,6 +226,10 @@ const createDrizzlePersistence = (connection: PgConnection): Persistence => {
     ),
     designConceptRepository: new TenantScopedDesignConceptRepository(
       new DrizzleDesignConceptRepository(db),
+      db
+    ),
+    vectorSearchIndexRepository: new TenantScopedVectorSearchIndexRepository(
+      new DrizzleProductFeatureEmbeddingRepository(db),
       db
     ),
     close: async (): Promise<void> => {

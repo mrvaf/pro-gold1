@@ -71,3 +71,7 @@ export * from './repositories/drizzle-design-session.repository.js';
 export * from './schema/design-concepts.js';
 export * from './adapters/in-memory-design-concept.repository.js';
 export * from './repositories/drizzle-design-concept.repository.js';
+
+// Visual Search Foundations (Stage 11)
+export * from './adapters/in-memory-vector-index.repository.js';
+export * from './repositories/drizzle-product-feature-embedding.repository.js';

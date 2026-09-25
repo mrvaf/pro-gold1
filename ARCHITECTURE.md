@@ -514,4 +514,29 @@ PricingBreakdown
   3. **Idempotency & Resilience:** `AiGatewayPort` and `AiGatewayClient` expose `generateConcept` with timeout protection (504 `AiTimeoutError`) and fallback to `UnavailableAiGatewayAdapter` (503). `DesignConceptService` checks `findByIdempotencyKey` before invoking AI generation to prevent duplicate token costs and duplicate concept creation.
   4. **Multi-Tenant Persistence & Row-Level Security:** Schema `design_concepts` and additive migration `0014_ai_concept_generation.sql` with unique composite index `(tenant_id, session_id, idempotency_key)` and conditional Row-Level Security policy (`design_concepts_tenant_isolation`). Wrapped in `TenantScopedDesignConceptRepository` in `createPersistence()`.
   5. **API Endpoints:** Added Next.js App Router endpoints `/api/v1/ai/design-sessions/[id]/concepts`, `/api/v1/ai/design-sessions/[id]/concepts/[conceptId]`, and `/api/v1/ai/design-sessions/[id]/concepts/[conceptId]/status` under HttpOnly session authentication and `ai.design` permission.
-* **Consequences:** Creative concept proposals are generated with verifiable domain material grounding, full token accounting, guaranteed idempotency, and hard multi-tenant database isolation.
+  * **Consequences:** Creative concept proposals are generated with verifiable domain material grounding, full token accounting, guaranteed idempotency, and hard multi-tenant database isolation.
+
+## ADR-0052: Visual Search Engine, Feature Embeddings & Multitenant Vector Indexing
+
+### Context
+Stage 11 of the V-GOLD roadmap introduces image-based jewelry similarity search across catalog items. Customers or merchants can submit an image (photo, sketch, or design screenshot) to identify matching physical products or variants in the live catalog based on aesthetic, geometric, and attribute characteristics.
+
+### Decision
+1. **Domain Isolation & Value Objects**:
+   - `FeatureVector`: Encapsulates high-dimensional feature embeddings with invariant bounds (8 to 2048 dimensions, finite floating-point values) and mathematical cosine similarity calculation.
+   - `VisualSearchImage`: Validates image binary metadata with strict file-type whitelisting (`image/jpeg`, `image/png`, `image/webp`), size limits (up to 5MB), and path traversal protection against suspicious filenames (e.g., `..`, `/`, `\`, null bytes).
+   - `VisualSearchResultItem`: Models ranked catalog matches with cosine similarity scores, ordinal ranks, and extracted domain attributes (`jewelryType`, `metalType`, `category`).
+
+2. **AI Gateway Integration**:
+   - Defined `VisualFeatureExtractorPort` in `@v-gold/core` with adapters in `@v-gold/ai-gateway`:
+     - `MockVisualFeatureExtractorAdapter`: Produces deterministic embeddings for continuous testing and offline development.
+     - `UnavailableVisualFeatureExtractorAdapter`: Gracefully handles provider downtime with typed `AiProviderUnavailableError`.
+
+3. **Storage & Multi-Tenant Row Level Security**:
+   - `product_feature_embeddings` table indexed by `tenant_id` and `product_id`.
+   - Migration `0015_visual_search_foundation.sql` enables and forces PostgreSQL RLS with `tenant_id = app_current_tenant_id()` policy.
+   - Persistence layer includes `InMemoryVectorIndexRepository` and `DrizzleProductFeatureEmbeddingRepository`, decorated with `TenantScopedVectorSearchIndexRepository` to enforce tenant boundary isolation.
+
+4. **REST API Endpoints**:
+   - `POST /api/v1/catalog/visual-search`: Accepts image payload, performs feature extraction, and returns top-K similarity-ranked items.
+   - `POST /api/v1/catalog/products/[id]/features`: Indexes product feature embeddings with associated catalog metadata.
