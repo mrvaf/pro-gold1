@@ -164,3 +164,19 @@ export * from './domain/packaging/packaging-cost-model.js';
 export * from './domain/packaging/packaging-specification.js';
 export * from './ports/packaging.port.js';
 
+// AI Packaging & Box Studio (Stage 16)
+export * from './domain/packaging/packaging-errors.js';
+export * from './domain/packaging/box-dimensions.js';
+export * from './domain/packaging/packaging-cost-model.js';
+export * from './domain/packaging/packaging-specification.js';
+export * from './ports/packaging.port.js';
+
+// Commerce, Orders & Payments (Stage 17)
+export * from './domain/commerce/commerce-errors.js';
+export * from './domain/commerce/cart-item.js';
+export * from './domain/commerce/cart.js';
+export * from './domain/commerce/stock-reservation.js';
+export * from './domain/commerce/order-line.js';
+export * from './domain/commerce/order.js';
+export * from './ports/commerce.port.js';
+

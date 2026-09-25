@@ -97,3 +97,8 @@ export * from './schema/packaging.js';
 export * from './adapters/in-memory-packaging.repository.js';
 export * from './repositories/drizzle-packaging.repository.js';
 
+// Commerce, Orders & Payments (Stage 17)
+export * from './schema/commerce.js';
+export * from './adapters/in-memory-commerce.repository.js';
+export * from './repositories/drizzle-commerce.repository.js';
+

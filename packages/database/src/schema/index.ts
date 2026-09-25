@@ -26,4 +26,5 @@ export * from './studio-3d-assets.js';
 export * from './try-on-sessions.js';
 export * from './custom-manufacturing-rfqs.js';
 export * from './packaging.js';
+export * from './commerce.js';
 

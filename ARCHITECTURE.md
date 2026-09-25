@@ -651,4 +651,28 @@ Stage 16 introduces custom luxury packaging and box specifications. Fine jewelry
    - `GET /api/v1/packaging/[id]`: Fetches single specification.
    - `POST /api/v1/packaging/[id]/preview`: Generates AI visual preview URL.
 
+## ADR-0058: Commerce, Orders & Atomic Inventory Reservations
+
+### Context
+Stage 17 introduces core transactional commerce: Carts, Orders, Line Items, Atomic Stock Reservations with TTL expiration, and Payment processing abstraction across multiple currencies with strict idempotency and zero client-price overrides.
+
+### Decision
+1. **Domain Models & State Machines**:
+   - `Cart` & `CartItem`: Encapsulates user cart state, multi-item line totals, and dynamic quantity consolidation.
+   - `StockReservation`: Implements finite-lifetime atomic inventory reservations (default 15 minutes TTL). Prevents stock overselling and double bookings during checkout.
+   - `Order` & `OrderLine`: Server-authoritative aggregate calculating line subtotals, tax components, and grand totals directly from domain `Money`. Enforces strict state progression: `PENDING_PAYMENT` -> `PAID` -> `PROCESSING` -> `SHIPPED` -> `DELIVERED` (or `CANCELLED`).
+   - Idempotency Guarantee: `checkoutCart` verifies optional `idempotencyKey` preventing duplicate charges or duplicate order records.
+
+2. **Multi-Tenant Row-Level Security**:
+   - Tables `carts`, `orders`, and `stock_reservations` created with migration `0020_commerce_foundation.sql`.
+   - PostgreSQL RLS policies `carts_tenant_isolation`, `orders_tenant_isolation`, and `stock_reservations_tenant_isolation` enforce tenant context.
+   - Repositories wrapped in `TenantScopedOrderRepository`, `TenantScopedCartRepository`, and `TenantScopedStockReservationRepository`.
+
+3. **REST API**:
+   - `GET /api/v1/commerce/cart`: Fetches current user cart.
+   - `POST /api/v1/commerce/cart`: Adds item or increments line quantity.
+   - `POST /api/v1/commerce/orders`: Converts cart to authoritative order with atomic stock reservations.
+   - `GET /api/v1/commerce/orders`: Lists user order history.
+   - `POST /api/v1/commerce/orders/[id]/pay`: Executes payment provider verification, commits stock reservations, and transitions order status to `PAID`.
+
 

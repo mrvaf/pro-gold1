@@ -71,6 +71,15 @@ import type {
   PackagingSpecification,
   PackagingSpecId,
   PackagingRepositoryPort,
+  Order,
+  OrderId,
+  OrderRepositoryPort,
+  Cart,
+  CartId,
+  CartRepositoryPort,
+  StockReservation,
+  StockReservationId,
+  StockReservationRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -684,5 +693,86 @@ export class TenantScopedPackagingRepository implements PackagingRepositoryPort 
 
   delete(id: PackagingSpecId, tenantId: TenantId): Promise<boolean> {
     return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
+  }
+}
+
+export class TenantScopedCartRepository implements CartRepositoryPort {
+  constructor(
+    private readonly inner: CartRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(cart: Cart): Promise<void> {
+    return withTenantContext(this.db, cart.tenantId, () => this.inner.save(cart));
+  }
+
+  findById(id: CartId, tenantId: TenantId): Promise<Cart | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  findByUser(userId: UserId, tenantId: TenantId): Promise<Cart | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findByUser(userId, tenantId));
+  }
+
+  delete(id: CartId, tenantId: TenantId): Promise<boolean> {
+    return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
+  }
+}
+
+export class TenantScopedOrderRepository implements OrderRepositoryPort {
+  constructor(
+    private readonly inner: OrderRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(order: Order): Promise<void> {
+    return withTenantContext(this.db, order.tenantId, () => this.inner.save(order));
+  }
+
+  findById(id: OrderId, tenantId: TenantId): Promise<Order | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  findByIdempotencyKey(key: string, tenantId: TenantId): Promise<Order | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findByIdempotencyKey(key, tenantId));
+  }
+
+  listByUser(userId: UserId, tenantId: TenantId): Promise<Order[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.listByUser(userId, tenantId));
+  }
+
+  listByTenant(tenantId: TenantId): Promise<Order[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.listByTenant(tenantId));
+  }
+}
+
+export class TenantScopedStockReservationRepository implements StockReservationRepositoryPort {
+  constructor(
+    private readonly inner: StockReservationRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(res: StockReservation): Promise<void> {
+    return withTenantContext(this.db, res.tenantId, () => this.inner.save(res));
+  }
+
+  findById(id: StockReservationId, tenantId: TenantId): Promise<StockReservation | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  findBySku(sku: string, tenantId: TenantId): Promise<StockReservation[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findBySku(sku, tenantId));
+  }
+
+  findActiveBySku(sku: string, tenantId: TenantId): Promise<StockReservation[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findActiveBySku(sku, tenantId));
+  }
+
+  commitByOrder(orderId: string, tenantId: TenantId): Promise<void> {
+    return withTenantContext(this.db, tenantId, () => this.inner.commitByOrder(orderId, tenantId));
+  }
+
+  releaseExpired(tenantId: TenantId): Promise<number> {
+    return withTenantContext(this.db, tenantId, () => this.inner.releaseExpired(tenantId));
   }
 }

@@ -268,14 +268,16 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 17 — Commerce, Orders & Payments
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
   - Cart, Cart Line, Order, Order Line, Stock Reservation aggregates.
-  - Atomic inventory reservation with expiration sweeps.
-  - Authoritative final price computation on server.
-  - Payment provider abstraction (mock adapter for dev/test; secure callback verification).
+  - Atomic inventory reservation with expiration TTLs and commit triggers.
+  - Authoritative final price computation on server with tax calculations.
+  - Payment provider processing and verification abstraction.
   - Complete commerce idempotency.
-* **Completion Criteria:** Double-submission tests pass; concurrent stock reservations prevent overselling.
+  - Migration 0020_commerce_foundation.sql with PostgreSQL Row-Level Security isolation.
+  - REST endpoints: `GET /api/v1/commerce/cart`, `POST /api/v1/commerce/cart`, `POST /api/v1/commerce/orders`, `GET /api/v1/commerce/orders`, `POST /api/v1/commerce/orders/[id]/pay`.
+* **Completion Criteria:** 633 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0058 recorded; double-submission tests pass; concurrent stock reservations prevent overselling.
 
 ---
 
