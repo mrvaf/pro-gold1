@@ -210,11 +210,13 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 12 — Budget-Aware Design Engine
-* **Status:** **PENDING**
+* **Status:** **DONE**
 * **Focus:**
   - Reverse pricing algorithm: Computes viable weight, karat, and stone options for a given target budget.
   - Synchronization with real-time gold spot rates.
-* **Completion Criteria:** Recommended configurations strictly satisfy target budget ceiling without floating-point error.
+  - Arbitrary-precision bisection search guaranteeing zero floating-point error.
+  - API endpoint `POST /api/v1/ai/budget-engine`.
+* **Completion Criteria:** 608 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0053 recorded; recommended configurations strictly satisfy target budget ceiling without floating-point error.
 
 ---
 

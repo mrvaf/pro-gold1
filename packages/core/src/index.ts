@@ -130,3 +130,8 @@ export * from './domain/visual-search/feature-vector.js';
 export * from './domain/visual-search/visual-search-image.js';
 export * from './domain/visual-search/visual-search-result.js';
 export * from './ports/visual-search.port.js';
+
+// Budget-Aware Design Engine (Stage 12)
+export * from './domain/budget-engine/budget-errors.js';
+export * from './domain/budget-engine/viable-configuration.js';
+export * from './domain/budget-engine/budget-aware-pricing-engine.js';

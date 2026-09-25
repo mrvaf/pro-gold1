@@ -540,3 +540,19 @@ Stage 11 of the V-GOLD roadmap introduces image-based jewelry similarity search 
 4. **REST API Endpoints**:
    - `POST /api/v1/catalog/visual-search`: Accepts image payload, performs feature extraction, and returns top-K similarity-ranked items.
    - `POST /api/v1/catalog/products/[id]/features`: Indexes product feature embeddings with associated catalog metadata.
+
+## ADR-0053: Budget-Aware Design Engine & Reverse-Pricing Solvers
+
+### Context
+Stage 12 of the V-GOLD roadmap introduces budget-aware jewelry reverse-pricing. Given a client's ceiling budget, preferred karats, and optional stone allowances, the engine computes optimal configurations (viable precious metal weights and breakdown) ensuring zero mathematical overruns against real-time gold spot rates and pricing rules.
+
+### Decision
+1. **Domain Isolation & Reverse Solver**:
+   - `BudgetAwarePricingEngine`: Uses arbitrary-precision bisection search (Decimal-safe with 0.1 mg epsilon tolerance) to solve for the maximum allowable metal weight for each requested karat under the target budget ceiling.
+   - Evaluates full statutory formula components via `PricingEngine` (base metal cost, ojrat/making charges, merchant margin, VAT rules, currency conversion).
+   - Invariant check verifies that computed cost strictly satisfies `estimatedCost <= budgetCeiling` with zero floating-point error.
+   - Rejects insufficient budgets with typed `InsufficientBudgetError` and catches ceiling overruns with `BudgetConfigurationExceededError`.
+
+2. **Web Layer & API**:
+   - `BudgetEngineService` coordinates market instrument resolution, spot observation retrieval, tenant-specific pricing rules, and reverse optimization.
+   - Protected endpoint `POST /api/v1/ai/budget-engine` strictly authenticated via HttpOnly session cookies under `pricing.read` permissions.
