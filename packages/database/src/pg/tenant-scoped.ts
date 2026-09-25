@@ -65,6 +65,9 @@ import type {
   TryOnSession,
   TryOnSessionId,
   TryOnSessionRepositoryPort,
+  CustomManufacturingRfq,
+  RfqId,
+  RfqRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -615,6 +618,35 @@ export class TenantScopedTryOnSessionRepository implements TryOnSessionRepositor
   }
 
   delete(id: TryOnSessionId, tenantId?: TenantId): Promise<void> {
+    return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
+  }
+
+  count(tenantId?: TenantId): Promise<number> {
+    return withTenantContext(this.db, tenantId, () => this.inner.count(tenantId));
+  }
+}
+
+export class TenantScopedRfqRepository implements RfqRepositoryPort {
+  constructor(
+    private readonly inner: RfqRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(rfq: CustomManufacturingRfq): Promise<void> {
+    return withTenantContext(this.db, rfq.tenantId, () => this.inner.save(rfq));
+  }
+
+  findById(id: RfqId, tenantId?: TenantId): Promise<CustomManufacturingRfq | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  listByParticipant(userId: UserId, tenantId: TenantId): Promise<CustomManufacturingRfq[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.listByParticipant(userId, tenantId)
+    );
+  }
+
+  delete(id: RfqId, tenantId?: TenantId): Promise<void> {
     return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
   }
 

@@ -24,3 +24,4 @@ export * from './design-concepts.js';
 export * from './product-feature-embeddings.js';
 export * from './studio-3d-assets.js';
 export * from './try-on-sessions.js';
+export * from './custom-manufacturing-rfqs.js';

@@ -603,3 +603,29 @@ Stage 14 of the V-GOLD roadmap introduces Virtual Try-On (AR) capabilities. User
 4. **REST API**:
    - `POST /api/v1/try-on/sessions`: Initiates an ephemeral try-on session under authenticated catalog reader context.
    - `GET /api/v1/try-on/sessions/[id]`: Returns session state and verifies active status.
+
+## ADR-0056: Custom Manufacturing & RFQ Workflows
+
+### Context
+Stage 15 of the V-GOLD roadmap introduces Custom Manufacturing and Request for Quote (RFQ) workflows, connecting customers, sellers, and certified goldsmiths. Customers require bespoke quoting, milestone-based cost breakdowns, specification revisions, and in-band messaging with strict status transitions and multi-tenant security isolation.
+
+### Decision
+1. **Domain Model & State Machine**:
+   - Aggregate Root `CustomManufacturingRfq`: Tracks custom manufacturing lifecycle across seven distinct states: `DRAFT` -> `OPEN` -> `PROPOSALS_RECEIVED` -> `ACCEPTED` -> `IN_PRODUCTION` -> `COMPLETED` (or `CANCELLED`). Enforces valid transitions via `InvalidRfqStateTransitionError`.
+   - `RfqProposal`: Models quotations submitted by certified goldsmiths, including delivery day estimates, notes, total quotes (`Money`), and milestone breakdowns (`MilestoneQuote`).
+   - `MilestoneQuote`: Value object representing granular work stages with targeted duration and associated cost.
+   - `RfqMessage`: In-band communication messages strictly attributed to authorized participants (`CUSTOMER`, `GOLDSMITH`, `SELLER`).
+   - Acceptance mechanics: When a proposal is accepted, the aggregate transitions to `ACCEPTED`, sets `assignedGoldsmithId`, and marks the accepted proposal as `ACCEPTED` while invalidating or retaining competing proposals.
+
+2. **Multi-Tenant Row-Level Security**:
+   - Database table `custom_manufacturing_rfqs` tracks JSONB structures for `proposals` and `messages` alongside relational tenant, customer, and goldsmith foreign keys.
+   - Migration `0018_custom_rfq_foundation.sql` creates table, indexes, enables RLS, and forces tenant isolation policy `custom_manufacturing_rfqs_tenant_isolation`.
+   - Enforced in persistence via `TenantScopedRfqRepository` preventing cross-tenant leakage.
+
+3. **REST API & DI Wiring**:
+   - `POST /api/v1/rfq`: Initiates custom manufacturing RFQ under authenticated user context.
+   - `GET /api/v1/rfq/[id]`: Fetches RFQ aggregate details including proposal list and messaging history.
+   - `POST /api/v1/rfq/[id]/proposals`: Submits quotation proposal with milestone schedule.
+   - `PATCH /api/v1/rfq/[id]/proposals`: Accepts a selected proposal and assigns goldsmith.
+   - `POST /api/v1/rfq/[id]/messages`: Dispatches in-band message between participants.
+

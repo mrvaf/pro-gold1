@@ -86,3 +86,8 @@ export * from './repositories/drizzle-studio-3d-asset.repository.js';
 export * from './schema/try-on-sessions.js';
 export * from './adapters/in-memory-try-on-session.repository.js';
 export * from './repositories/drizzle-try-on-session.repository.js';
+
+// Custom Manufacturing & RFQ Workflows (Stage 15)
+export * from './schema/custom-manufacturing-rfqs.js';
+export * from './adapters/in-memory-rfq.repository.js';
+export * from './repositories/drizzle-rfq.repository.js';

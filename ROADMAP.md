@@ -245,11 +245,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 15 — Custom Manufacturing & RFQ Workflows
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
   - Request for Quote (RFQ) aggregate between customer, seller, and certified goldsmiths.
   - Milestone-based quotes, specification approval, and in-band messaging.
-* **Completion Criteria:** State transitions for RFQ lifecycle enforced by domain state machine tests.
+  - Lifecycle state machine: DRAFT -> OPEN -> PROPOSALS_RECEIVED -> ACCEPTED -> IN_PRODUCTION -> COMPLETED (and CANCELLED).
+  - Migration 0018_custom_rfq_foundation.sql with PostgreSQL Row-Level Security isolation.
+  - REST endpoints: `POST /api/v1/rfq`, `GET /api/v1/rfq/[id]`, `POST /api/v1/rfq/[id]/proposals`, `PATCH /api/v1/rfq/[id]/proposals`, `POST /api/v1/rfq/[id]/messages`.
+* **Completion Criteria:** 625 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0056 recorded; state transitions for RFQ lifecycle enforced by domain state machine tests.
 
 ---
 

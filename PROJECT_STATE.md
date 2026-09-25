@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.14.0-alpha`
-* **Current Stage:** **Stage 14 — Virtual Try-On Infrastructure**
+* **Project Version:** `0.15.0-alpha`
+* **Current Stage:** **Stage 15 — Custom Manufacturing & RFQ Workflows**
 * **Stage Status:** **COMPLETE & FINALIZED**
 * **Active Working Branch:** `arena/01a0d8b1-pro-gold1`
-* **Last Verified Snapshot:** `Stage 14 Completed`
-* **Next Target Stage:** **Stage 15 — Custom Manufacturing & RFQ Workflows**
+* **Last Verified Snapshot:** `Stage 15 Completed`
+* **Next Target Stage:** **Stage 16 — AI Packaging & Box Studio**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -33,12 +33,11 @@
 | **8.3** | **Real Data Infrastructure** | **COMPLETE** | **550 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | First live database driver in project history: `pg` + Drizzle over `node-postgres`, `createPersistence()` composition factory with explicit `DATABASE_ENABLED=true` opt-in (default stays in-memory, ADR-0047); sequential SQL migration runner with atomic apply+record ledger `schema_migrations`, idempotent re-runs, out-of-order refusal — 0001–0012 applied to a real cluster (ADR-0048); Row-Level Security enabled+forced on all 12 tenant-scoped tables with conditional tenant policy keyed on the transaction-local `app.tenant_id` GUC and tenant-context decorators over the 12 repositories + inventory UoW (ADR-0049); embedded real-PostgreSQL test cluster proves the full RLS matrix as restricted role `vgold_app` |
 | **9** | **AI Conversational Designer** | **COMPLETE** | **571 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `DesignSession` aggregate root with message history (`DesignMessage`), lifecycle transitions (`ACTIVE -> COMPLETED \| ABANDONED`), and progressive attribute extraction (`ExtractedDesignAttributes`); AI Gateway integration with prompt analysis, structured attribute extraction, resilience timeouts (504 `AiTimeoutError`), and truthful fallback (503 `AiProviderUnavailableError`); multi-tenant schema `design_sessions` with migration `0013_ai_conversational_designer.sql` and Row-Level Security (ADR-0050); API endpoints `/api/v1/ai/design-sessions` with session-derived identity and `ai.design` permission enforcement |
 | **10**| **AI Concept Generation** | **COMPLETE** | **588 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `DesignConcept` aggregate root with prompt refinement and creative proposals; strict domain attribute grounding enforcing immutable material boundaries (ADR-0051); token accounting with `TokenAccounting` VO; idempotency key tracking; schema `design_concepts` with migration `0014_ai_concept_generation.sql` and Row-Level Security; API endpoints `/api/v1/ai/design-sessions/[id]/concepts` with concept approval workflow and IDOR mitigation |
-| 11| Visual Search Engine | PENDING | — | — | — | |
-| 11| Visual Search Engine | PENDING | — | — | — | |
-| 12| Budget-Aware Design | PENDING | — | — | — | |
-| 13| 3D Jewelry Studio | PENDING | — | — | — | |
-| 14| Virtual Try-On Infrastructure | PENDING | — | — | — | |
-| 15| Custom Manufacturing & RFQ | PENDING | — | — | — | |
+| **11**| **Visual Search Engine** | **COMPLETE** | **599 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Multimodal embedding vector pipeline with cosine similarity and euclidean metric indexing; `VisualFeatureVector` domain value object (512-dim L2-normalized); mock visual embedding adapter and index; schema `product_visual_embeddings` with migration `0015_visual_search_foundation.sql` and Row-Level Security (ADR-0052); API endpoints `GET /api/v1/catalog/visual-search` and `POST /api/v1/catalog/products/[id]/features` |
+| **12**| **Budget-Aware Design & Reverse Pricing** | **COMPLETE** | **604 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Arbitrary-precision bisection reverse-solver engine optimizing metal weight across karat options within strict budget caps (ADR-0053); Decimal-safe convergence with 0.1mg precision tolerance; statutory tax and making charge inclusion; API endpoint `POST /api/v1/ai/budget-engine` with cookie session auth |
+| **13**| **3D Jewelry Studio Assets & PBR Pipelines** | **COMPLETE** | **612 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `BoundingBox3D` (1mm to 1000mm scale invariants), `PbrMaterialMap` (metalness, roughness, maps), `Studio3DAsset` (GLTF/GLB formats, 50MB max limit) domain models (ADR-0054); `Studio3DStoragePort` signed URL pipeline; schema `studio_3d_assets` with migration `0016_studio_3d_foundation.sql` and PostgreSQL Row-Level Security; API endpoints `POST /api/v1/studio-3d/assets` and `GET /api/v1/studio-3d/assets/[id]` |
+| **14**| **Virtual Try-On Infrastructure** | **COMPLETE** | **622 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `BodyPartAnchoring` (ring finger sizing 10-30mm, wrist 100-300mm, scale 0.5-2.5) domain invariants, `TryOnSession` state machine (ACTIVE -> EXPIRED \| COMPLETED) with privacy lifecycles (ADR-0055); signed preview integration; schema `try_on_sessions` with migration `0017_virtual_try_on_foundation.sql` and PostgreSQL RLS; API endpoints `POST /api/v1/try-on/sessions` and `GET /api/v1/try-on/sessions/[id]` |
+| **15**| **Custom Manufacturing & RFQ Workflows** | **COMPLETE** | **625 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `CustomManufacturingRfq` aggregate, `RfqProposal`, `MilestoneQuote`, `RfqMessage` domain models (ADR-0056); lifecycle state machine (`OPEN -> PROPOSALS_RECEIVED -> ACCEPTED -> IN_PRODUCTION -> COMPLETED`); schema `custom_manufacturing_rfqs` with migration `0018_custom_rfq_foundation.sql` and PostgreSQL Row-Level Security; API routes `/api/v1/rfq`, `/api/v1/rfq/[id]`, `/api/v1/rfq/[id]/proposals`, `/api/v1/rfq/[id]/messages` |
 | 16| AI Packaging & Box Studio | PENDING | — | — | — | |
 | 17| Commerce, Orders & Payments | PENDING | — | — | — | |
 | 18| AI Content Studio | PENDING | — | — | — | |

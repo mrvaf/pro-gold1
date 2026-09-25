@@ -148,3 +148,11 @@ export * from './domain/try-on/try-on-errors.js';
 export * from './domain/try-on/body-part-anchoring.js';
 export * from './domain/try-on/try-on-session.js';
 export * from './ports/try-on.port.js';
+
+// Custom Manufacturing & RFQ Workflows (Stage 15)
+export * from './domain/rfq/rfq-errors.js';
+export * from './domain/rfq/milestone-quote.js';
+export * from './domain/rfq/rfq-proposal.js';
+export * from './domain/rfq/rfq-message.js';
+export * from './domain/rfq/custom-manufacturing-rfq.js';
+export * from './ports/rfq.port.js';
