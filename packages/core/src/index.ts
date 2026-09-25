@@ -216,5 +216,11 @@ export * from './common/rate-limiter.js';
 // Production Readiness & Operations (Stage 24)
 export * from './common/structured-logger.js';
 
+// Future Platform Extensions (Stage 26)
+export * from './domain/product/style-dna.js';
+export * from './domain/product/digital-jewelry-passport.js';
+export * from './ports/digital-jewelry-passport.port.js';
+
+
 
 

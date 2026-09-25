@@ -121,6 +121,11 @@ export * from './repositories/drizzle-trust-safety.repository.js';
 // Analytics & Business Intelligence (Stage 21)
 export * from './adapters/persistence-analytics.repository.js';
 
+// Future Platform Extensions (Stage 26)
+export * from './schema/digital-jewelry-passports.js';
+export * from './adapters/in-memory-digital-jewelry-passport.repository.js';
+
+
 
 
 

@@ -30,6 +30,8 @@ export * from './commerce.js';
 export * from './content-assets.js';
 export * from './social-commerce.js';
 export * from './trust-safety.js';
+export * from './digital-jewelry-passports.js';
+
 
 
 

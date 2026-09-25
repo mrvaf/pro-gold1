@@ -809,6 +809,23 @@ Stage 25 executes an exhaustive, end-to-end full-system product audit across all
    - 100% test pass rate across all 105 test suites and 669 unit, integration, and security verification tests.
    - Flawless compilation of Next.js production build across all 45 API routes and static pages with zero type violations or broken imports.
 
+## ADR-0067: Future Platform Extensions — Jewelry Style DNA & Digital Jewelry Passports
+
+### Context
+Stage 26 introduces forward-looking architectural extension points for high-value fine jewelry: algorithmic Style DNA modeling and cryptographic provenance tracking via Digital Jewelry Passports. Fine jewelry pieces require persistent provenance tracking across manufacturing, assay office hallmark certification, resale transfers, and service/repair cycles without compromising tenant isolation.
+
+### Decision
+1. **Style DNA Modeling (`StyleDna`)**:
+   - Immutable Value Object capturing design attributes: `aestheticStyle`, `primaryMotif`, `finishPreference`, bounded `symmetryScore` [0.0, 1.0], bounded `complexityScore` [0.0, 1.0], and design style tags.
+2. **Digital Jewelry Passport & Provenance Aggregate (`DigitalJewelryPassport`)**:
+   - Entity identified by branded `DigitalJewelryPassportId`, binding physical product (`productId`), serial number, certificate number, and style DNA to an append-only provenance event history (`ProvenanceEvent`).
+   - Supports lifecycle provenance events: `ORIGIN_MANUFACTURE`, `HALLMARK_CERTIFIED`, `OWNERSHIP_TRANSFERRED`, and `REPAIR_SERVICED`.
+3. **Database Schema & Row-Level Security**:
+   - Additive sequential migration `0025_future_extensions_foundation.sql` creates table `digital_jewelry_passports` with compound tenant indices, uniqueness constraints on `(tenant_id, serial_number)`, and enforced PostgreSQL Row-Level Security (`tenant_isolation_passports`).
+4. **Ports & Adapters**:
+   - Defined `DigitalJewelryPassportRepositoryPort` in core domain and implemented `InMemoryDigitalJewelryPassportRepository` in persistence layer ensuring absolute multi-tenant query boundaries.
+
+
 
 
 
