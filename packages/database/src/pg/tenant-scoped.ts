@@ -59,6 +59,9 @@ import type {
   ProductFeatureEmbedding,
   FeatureVector,
   VisualSearchResultItem,
+  Studio3DAsset,
+  Studio3DAssetId,
+  Studio3DAssetRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -556,5 +559,34 @@ export class TenantScopedVectorSearchIndexRepository implements VectorSearchInde
     return withTenantContext(this.db, tenantId, () =>
       this.inner.deleteByProduct(productId, tenantId)
     );
+  }
+}
+
+export class TenantScopedStudio3DAssetRepository implements Studio3DAssetRepositoryPort {
+  constructor(
+    private readonly inner: Studio3DAssetRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(asset: Studio3DAsset): Promise<void> {
+    return withTenantContext(this.db, asset.tenantId, () => this.inner.save(asset));
+  }
+
+  findById(id: Studio3DAssetId, tenantId?: TenantId): Promise<Studio3DAsset | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  findByProduct(productId: ProductId, tenantId: TenantId): Promise<Studio3DAsset[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.findByProduct(productId, tenantId)
+    );
+  }
+
+  delete(id: Studio3DAssetId, tenantId?: TenantId): Promise<void> {
+    return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
+  }
+
+  count(tenantId?: TenantId): Promise<number> {
+    return withTenantContext(this.db, tenantId, () => this.inner.count(tenantId));
   }
 }

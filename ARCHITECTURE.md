@@ -556,3 +556,27 @@ Stage 12 of the V-GOLD roadmap introduces budget-aware jewelry reverse-pricing. 
 2. **Web Layer & API**:
    - `BudgetEngineService` coordinates market instrument resolution, spot observation retrieval, tenant-specific pricing rules, and reverse optimization.
    - Protected endpoint `POST /api/v1/ai/budget-engine` strictly authenticated via HttpOnly session cookies under `pricing.read` permissions.
+
+## ADR-0054: 3D Jewelry Studio Assets, PBR Material Pipelines & Signed Previews
+
+### Context
+Stage 13 of the V-GOLD roadmap introduces the 3D Jewelry Studio foundation, enabling interactive 3D rendering and inspection of jewelry models (GLTF/GLB formats, mesh scale, and PBR material maps) within isolated tenant contexts.
+
+### Decision
+1. **Domain Isolation & Value Objects**:
+   - `BoundingBox3D`: Validates bounding box dimensions along X, Y, Z axes within strict jewelry scale invariants (0.001m to 1.0m / 1mm to 1000mm) using `Invalid3DScaleError`.
+   - `PbrMaterialMap`: Encapsulates physically-based rendering properties (metalness, roughness, base color hex, normal, and occlusion maps) clamped between [0.0, 1.0].
+   - `Studio3DAsset`: Models 3D asset metadata, file size enforcement (up to 50MB via `Oversized3DAssetError`), and MIME validation restricted to `model/gltf-binary` (.glb) and `model/gltf+json` (.gltf) via `Invalid3DAssetTypeError`.
+
+2. **Storage Port & Temporary Signed URLs**:
+   - `Studio3DStoragePort` defines signed download and upload URL generation contracts (`MockStudio3DStorageAdapter`).
+   - Previews utilize time-limited signed URLs (default 900 seconds) preventing unauthorized persistent asset exposure.
+
+3. **Multi-Tenant Row-Level Security**:
+   - Schema `studio_3d_assets` indexed by `tenant_id` and `product_id`.
+   - Migration `0016_studio_3d_foundation.sql` enables and forces PostgreSQL RLS policy `studio_3d_assets_tenant_isolation`.
+   - Wrapped in `TenantScopedStudio3DAssetRepository` preventing cross-tenant leakage.
+
+4. **REST API**:
+   - `POST /api/v1/studio-3d/assets`: Registers new 3D model metadata under `catalog.manage` permission.
+   - `GET /api/v1/studio-3d/assets/[id]`: Generates signed preview payload under `catalog.read` permission.

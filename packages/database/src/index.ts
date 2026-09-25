@@ -75,3 +75,9 @@ export * from './repositories/drizzle-design-concept.repository.js';
 // Visual Search Foundations (Stage 11)
 export * from './adapters/in-memory-vector-index.repository.js';
 export * from './repositories/drizzle-product-feature-embedding.repository.js';
+
+// 3D Jewelry Studio (Stage 13)
+export * from './schema/studio-3d-assets.js';
+export * from './adapters/in-memory-studio-3d-asset.repository.js';
+export * from './adapters/mock-studio-3d-storage.adapter.js';
+export * from './repositories/drizzle-studio-3d-asset.repository.js';

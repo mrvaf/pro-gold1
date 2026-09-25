@@ -135,3 +135,10 @@ export * from './ports/visual-search.port.js';
 export * from './domain/budget-engine/budget-errors.js';
 export * from './domain/budget-engine/viable-configuration.js';
 export * from './domain/budget-engine/budget-aware-pricing-engine.js';
+
+// 3D Jewelry Studio (Stage 13)
+export * from './domain/studio-3d/studio-3d-errors.js';
+export * from './domain/studio-3d/bounding-box-3d.js';
+export * from './domain/studio-3d/pbr-material-map.js';
+export * from './domain/studio-3d/studio-3d-asset.js';
+export * from './ports/studio-3d.port.js';

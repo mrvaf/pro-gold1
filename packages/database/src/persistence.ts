@@ -22,14 +22,19 @@ import type {
   DesignSessionRepositoryPort,
   DesignConceptRepositoryPort,
   VectorSearchIndexPort,
+  Studio3DAssetRepositoryPort,
+  Studio3DStoragePort,
 } from '@v-gold/core';
 import { createDatabaseConfigFromEnv } from './config.js';
 import { InMemoryDesignSessionRepository } from './adapters/in-memory-design-session.repository.js';
 import { InMemoryDesignConceptRepository } from './adapters/in-memory-design-concept.repository.js';
 import { InMemoryVectorIndexRepository } from './adapters/in-memory-vector-index.repository.js';
+import { InMemoryStudio3DAssetRepository } from './adapters/in-memory-studio-3d-asset.repository.js';
+import { MockStudio3DStorageAdapter } from './adapters/mock-studio-3d-storage.adapter.js';
 import { DrizzleDesignSessionRepository } from './repositories/drizzle-design-session.repository.js';
 import { DrizzleDesignConceptRepository } from './repositories/drizzle-design-concept.repository.js';
 import { DrizzleProductFeatureEmbeddingRepository } from './repositories/drizzle-product-feature-embedding.repository.js';
+import { DrizzleStudio3DAssetRepository } from './repositories/drizzle-studio-3d-asset.repository.js';
 import { InMemoryFxRateRepository } from './adapters/in-memory-fx-rate.repository.js';
 import { InMemoryInventoryItemRepository } from './adapters/in-memory-inventory-item.repository.js';
 import { InMemoryInventoryLocationRepository } from './adapters/in-memory-inventory-location.repository.js';
@@ -88,6 +93,7 @@ import {
   TenantScopedDesignSessionRepository,
   TenantScopedDesignConceptRepository,
   TenantScopedVectorSearchIndexRepository,
+  TenantScopedStudio3DAssetRepository,
 } from './pg/tenant-scoped.js';
 
 /**
@@ -127,6 +133,8 @@ export interface Persistence {
   readonly designSessionRepository: DesignSessionRepositoryPort;
   readonly designConceptRepository: DesignConceptRepositoryPort;
   readonly vectorSearchIndexRepository: VectorSearchIndexPort;
+  readonly studio3dAssetRepository: Studio3DAssetRepositoryPort;
+  readonly studio3dStorage: Studio3DStoragePort;
   close(): Promise<void>;
 }
 
@@ -162,6 +170,8 @@ const createInMemoryPersistence = (): Persistence => {
     designSessionRepository: new InMemoryDesignSessionRepository(),
     designConceptRepository: new InMemoryDesignConceptRepository(),
     vectorSearchIndexRepository: new InMemoryVectorIndexRepository(),
+    studio3dAssetRepository: new InMemoryStudio3DAssetRepository(),
+    studio3dStorage: new MockStudio3DStorageAdapter(),
     close: async (): Promise<void> => {
       // in-memory: nothing to release
     },
@@ -232,6 +242,11 @@ const createDrizzlePersistence = (connection: PgConnection): Persistence => {
       new DrizzleProductFeatureEmbeddingRepository(db),
       db
     ),
+    studio3dAssetRepository: new TenantScopedStudio3DAssetRepository(
+      new DrizzleStudio3DAssetRepository(db),
+      db
+    ),
+    studio3dStorage: new MockStudio3DStorageAdapter(),
     close: async (): Promise<void> => {
       sharedPgConnection = null;
       await connection.close();

@@ -50,6 +50,7 @@ const TENANT_SCOPED_TABLES = [
   'design_sessions',
   'design_concepts',
   'product_feature_embeddings',
+  'studio_3d_assets',
 ] as const;
 
 const PG_PORT = 54320 + (process.pid % 900);
@@ -108,7 +109,7 @@ beforeAll(async () => {
   );
 
   const result = await runMigrations(adminPool);
-  expect(result.applied.length).toBe(15);
+  expect(result.applied.length).toBe(16);
 
   appPool = new Pool({ ...appConfig });
   appDb = drizzle(appPool);
@@ -145,13 +146,14 @@ describe('Stage 8.3 — migrations (ADR-0048)', () => {
       '0013_ai_conversational_designer.sql',
       '0014_ai_concept_generation.sql',
       '0015_visual_search_foundation.sql',
+      '0016_studio_3d_foundation.sql',
     ]);
   });
 
   it('is idempotent — a second run applies nothing', async () => {
     const result = await runMigrations(adminPool);
     expect(result.applied).toEqual([]);
-    expect(result.alreadyApplied.length).toBe(15);
+    expect(result.alreadyApplied.length).toBe(16);
   });
 
   it('enables + forces RLS with one tenant-isolation policy on every tenant-scoped table', async () => {
@@ -171,7 +173,7 @@ describe('Stage 8.3 — migrations (ADR-0048)', () => {
        ORDER BY c.relname`,
       [[...TENANT_SCOPED_TABLES]]
     );
-    expect(rows.length).toBe(15);
+    expect(rows.length).toBe(16);
     for (const row of rows) {
       expect(row.relrowsecurity).toBe(true);
       expect(row.relforcerowsecurity).toBe(true);

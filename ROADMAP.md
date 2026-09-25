@@ -221,12 +221,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 13 — 3D Jewelry Studio
-* **Status:** **PENDING**
+* **Status:** **DONE**
 * **Focus:**
   - 3D asset metadata models (GLTF/GLB formats, mesh scale, material maps).
   - Asset storage port with signed URLs and mime-type verification.
   - Studio preview abstraction.
-* **Completion Criteria:** Safe asset validation tests pass; 3D viewer contracts verified.
+  - Migration 0016_studio_3d_foundation.sql with PostgreSQL Row-Level Security.
+  - REST endpoints `POST /api/v1/studio-3d/assets` and `GET /api/v1/studio-3d/assets/[id]`.
+* **Completion Criteria:** 616 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0054 recorded; safe asset validation tests pass; 3D viewer contracts verified.
 
 ---
 
