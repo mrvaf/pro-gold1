@@ -83,6 +83,9 @@ import type {
   ContentAsset,
   ContentAssetId,
   ContentStudioRepositoryPort,
+  PublishingChannel,
+  PublishingPost,
+  SocialCommerceRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -808,3 +811,41 @@ export class TenantScopedContentStudioRepository implements ContentStudioReposit
     return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
   }
 }
+
+export class TenantScopedSocialCommerceRepository implements SocialCommerceRepositoryPort {
+  constructor(
+    private readonly inner: SocialCommerceRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  saveChannel(channel: PublishingChannel): Promise<void> {
+    return withTenantContext(this.db, channel.tenantId, () => this.inner.saveChannel(channel));
+  }
+
+  findChannelById(id: string, tenantId: TenantId): Promise<PublishingChannel | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findChannelById(id, tenantId));
+  }
+
+  findChannelsByTenant(tenantId: TenantId): Promise<PublishingChannel[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findChannelsByTenant(tenantId));
+  }
+
+  savePost(post: PublishingPost): Promise<void> {
+    return withTenantContext(this.db, post.tenantId, () => this.inner.savePost(post));
+  }
+
+  findPostById(id: string, tenantId: TenantId): Promise<PublishingPost | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findPostById(id, tenantId));
+  }
+
+  findPostsByTenant(tenantId: TenantId, limit?: number): Promise<PublishingPost[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findPostsByTenant(tenantId, limit));
+  }
+
+  findDueScheduledPosts(tenantId: TenantId, beforeDate: Date): Promise<PublishingPost[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.findDueScheduledPosts(tenantId, beforeDate)
+    );
+  }
+}
+

@@ -28,5 +28,7 @@ export * from './custom-manufacturing-rfqs.js';
 export * from './packaging.js';
 export * from './commerce.js';
 export * from './content-assets.js';
+export * from './social-commerce.js';
+
 
 

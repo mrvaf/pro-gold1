@@ -107,4 +107,11 @@ export * from './schema/content-assets.js';
 export * from './adapters/in-memory-content-studio.repository.js';
 export * from './repositories/drizzle-content-studio.repository.js';
 
+// Social Commerce & Multi-Platform Publishing (Stage 19)
+export * from './schema/social-commerce.js';
+export * from './adapters/in-memory-social-commerce.repository.js';
+export * from './repositories/drizzle-social-commerce.repository.js';
+export * from './adapters/mock-social-publishing.adapter.js';
+
+
 

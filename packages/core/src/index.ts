@@ -186,4 +186,11 @@ export * from './domain/content-studio/content-grounding.validator.js';
 export * from './domain/content-studio/content-asset.js';
 export * from './ports/content-studio.port.js';
 
+// Social Commerce & Multi-Platform Publishing (Stage 19)
+export * from './domain/social-commerce/social-commerce-errors.js';
+export * from './domain/social-commerce/secure-credential-vault.js';
+export * from './domain/social-commerce/publishing-post.js';
+export * from './ports/social-commerce.port.js';
+
+
 

@@ -695,5 +695,26 @@ Stage 18 introduces automated marketing, e-commerce, and certificate copy genera
    - `GET /api/v1/content-studio`: Lists tenant content assets (optionally filtered by `productId`) under `catalog.read`.
    - `GET /api/v1/content-studio/[id]`: Retrieves specific content asset.
 
+## ADR-0060: Social Commerce & Multi-Platform Publishing
+
+### Context
+Stage 19 introduces automated social publishing across external platforms (Instagram, Telegram, WhatsApp catalogs). Storing third-party OAuth access tokens and bot credentials in plaintext creates high-severity exfiltration risks. Furthermore, post lifecycle management requires deterministic asynchronous scheduling and atomic state transitions to prevent duplicate broadcasts.
+
+### Decision
+1. **AES-256-GCM Secure Credential Vault**:
+   - `SecureCredentialVault`: Encrypts access tokens and API secrets with AES-256-GCM using a 96-bit CSPRNG IV and 128-bit authentication tag. Tokens are never persisted in plaintext, nor leaked in API responses.
+2. **Domain Models & Lifecycle State Machine**:
+   - `PublishingChannel`: Aggregate root encapsulating platform credentials, active status, and tenant isolation.
+   - `PublishingPost`: Post aggregate managing scheduled publication times, media attachments, and state machine transitions: `SCHEDULED` -> `PUBLISHING` -> `PUBLISHED` (or `FAILED`).
+3. **Multi-Tenant Row-Level Security**:
+   - Tables `publishing_channels` and `publishing_posts` created in migration `0022_social_commerce_foundation.sql`.
+   - Restrictive policies `publishing_channels_tenant_isolation` and `publishing_posts_tenant_isolation` guarantee strict multi-tenant segregation.
+4. **REST API**:
+   - `GET /api/v1/social/channels` & `POST /api/v1/social/channels`: Manages connected platform accounts.
+   - `GET /api/v1/social/posts` & `POST /api/v1/social/posts`: Schedules social broadcasts.
+   - `GET /api/v1/social/posts/[id]`: Retrieves post status.
+   - `POST /api/v1/social/posts/[id]/publish`: Triggers execution of due posts via `SocialPublishingPort`.
+
+
 
 

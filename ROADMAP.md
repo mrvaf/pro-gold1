@@ -294,12 +294,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 19 — Social Commerce & Multi-Platform Publishing
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
   - Social publishing abstraction (Instagram, Telegram, WhatsApp catalogs).
   - Secure credential storage (AES-GCM encryption for seller access tokens).
-  - Scheduled publishing queue models.
-* **Completion Criteria:** Zero plain-text credentials; publishing port mock tests pass.
+  - Scheduled publishing queue models and lifecycle state machine.
+  - Migration 0022_social_commerce_foundation.sql with PostgreSQL Row-Level Security isolation.
+  - REST endpoints: `GET/POST /api/v1/social/channels`, `GET/POST /api/v1/social/posts`, `GET /api/v1/social/posts/[id]`, `POST /api/v1/social/posts/[id]/publish`.
+* **Completion Criteria:** 643 tests passing; zero plain-text credentials; publishing port mock tests pass; zero regressions; typecheck PASS; build PASS; ADR-0060 recorded.
 
 ---
 

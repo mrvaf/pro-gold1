@@ -31,6 +31,8 @@ import type {
   CartRepositoryPort,
   StockReservationRepositoryPort,
   ContentStudioRepositoryPort,
+  SocialCommerceRepositoryPort,
+  SocialPublishingPort,
 } from '@v-gold/core';
 import { createDatabaseConfigFromEnv } from './config.js';
 import { InMemoryDesignSessionRepository } from './adapters/in-memory-design-session.repository.js';
@@ -46,6 +48,8 @@ import {
   InMemoryStockReservationRepository,
 } from './adapters/in-memory-commerce.repository.js';
 import { InMemoryContentStudioRepository } from './adapters/in-memory-content-studio.repository.js';
+import { InMemorySocialCommerceRepository } from './adapters/in-memory-social-commerce.repository.js';
+import { MockSocialPublishingAdapter } from './adapters/mock-social-publishing.adapter.js';
 import { MockStudio3DStorageAdapter } from './adapters/mock-studio-3d-storage.adapter.js';
 import { DrizzleDesignSessionRepository } from './repositories/drizzle-design-session.repository.js';
 import { DrizzleDesignConceptRepository } from './repositories/drizzle-design-concept.repository.js';
@@ -60,6 +64,7 @@ import {
   DrizzleStockReservationRepository,
 } from './repositories/drizzle-commerce.repository.js';
 import { DrizzleContentStudioRepository } from './repositories/drizzle-content-studio.repository.js';
+import { DrizzleSocialCommerceRepository } from './repositories/drizzle-social-commerce.repository.js';
 import { InMemoryFxRateRepository } from './adapters/in-memory-fx-rate.repository.js';
 import { InMemoryInventoryItemRepository } from './adapters/in-memory-inventory-item.repository.js';
 import { InMemoryInventoryLocationRepository } from './adapters/in-memory-inventory-location.repository.js';
@@ -126,6 +131,7 @@ import {
   TenantScopedCartRepository,
   TenantScopedStockReservationRepository,
   TenantScopedContentStudioRepository,
+  TenantScopedSocialCommerceRepository,
 } from './pg/tenant-scoped.js';
 
 /**
@@ -174,6 +180,8 @@ export interface Persistence {
   readonly cartRepository: CartRepositoryPort;
   readonly stockReservationRepository: StockReservationRepositoryPort;
   readonly contentStudioRepository: ContentStudioRepositoryPort;
+  readonly socialCommerceRepository: SocialCommerceRepositoryPort;
+  readonly socialPublishing: SocialPublishingPort;
   close(): Promise<void>;
 }
 
@@ -218,6 +226,8 @@ const createInMemoryPersistence = (): Persistence => {
     cartRepository: new InMemoryCartRepository(),
     stockReservationRepository: new InMemoryStockReservationRepository(),
     contentStudioRepository: new InMemoryContentStudioRepository(),
+    socialCommerceRepository: new InMemorySocialCommerceRepository(),
+    socialPublishing: new MockSocialPublishingAdapter(),
     close: async (): Promise<void> => {
       // in-memory: nothing to release
     },
@@ -321,6 +331,11 @@ const createDrizzlePersistence = (connection: PgConnection): Persistence => {
       new DrizzleContentStudioRepository(db),
       db
     ),
+    socialCommerceRepository: new TenantScopedSocialCommerceRepository(
+      new DrizzleSocialCommerceRepository(db),
+      db
+    ),
+    socialPublishing: new MockSocialPublishingAdapter(),
     close: async (): Promise<void> => {
       sharedPgConnection = null;
       await connection.close();
