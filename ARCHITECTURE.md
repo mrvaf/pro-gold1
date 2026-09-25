@@ -428,6 +428,37 @@ PricingBreakdown
   4. Response-error shape is unified as `{success:false, error:{code, message, details?}}`. Auth route responses previously used `{error:{...}}` without `success`; the mapper's `success:false` is strictly additive there and no asserted contract changes.
 * **Consequences:** No route returns raw `error.message`; a forced-500 matrix cell (`tests/api-auth-hardening.test.ts` scenario 7, all 20 methods) asserts the generic body contains no internal marker/path and the mapper emits the server log without secrets/PII.
 
+### ADR-0043: UUIDv7 Entity Identifiers via a Single IdGenerator Port (Stage 8.2)
+
+* **Context:** Every `id` fallback across 12 entity/service factories was generated ad-hoc with `Math.random()`/`Date.now()` — predictable, clock-embedded, scattered across domain files, and un-injectable for tests (integrity-audit finding). Identifier columns are `VARCHAR` and must stay so (no destructive migration).
+* **Decision:**
+  1. New port `IdGeneratorPort` (`packages/core/src/ports/id-generator.port.ts`) with `generate(prefix?): string`, plus default implementation `packages/core/src/common/id-generator.ts`: `uuidv7()` per RFC 9562 (48-bit millisecond timestamp + 72 bits of CSPRNG entropy from `globalThis.crypto.getRandomValues`, version nibble `7`, variant `10xx`), `UuidV7IdGenerator`, and process-wide `getDefaultIdGenerator`/`setDefaultIdGenerator` for composition-root/test injection.
+  2. Generated ids keep the existing debuggability prefix convention (`prod_`, `var_`, `user_`, `mem_`, `inv_`, `loc_`, `mov_`, `list_`, `rule_`, `prc_`, `obs_`, `fx_`; the mock provider uses `mock_`) followed by the UUIDv7. Explicitly supplied ids (e.g. seeded rule ids like `rule_iran_bazaar_18k_v1`) are preserved verbatim — factories keep `props.id ?? generateId(prefix)`.
+  3. All 12 fallback sites (product, product-variant, user, tenant-membership, inventory-item, inventory-location, inventory-movement, seller-listing, pricing-rule, pricing-engine, market-data-ingestion, drizzle-fx-rate) now delegate to `generateId`; the mock market-data provider's `externalId` fallback was aligned as well (13th site, done for full elimination), so no `Math.random()`/`Date.now()` identifier generation remains anywhere — the only `Date.now()` left is the mandated timestamp field inside `uuidv7` itself.
+* **Consequences:** Ids become time-ordered (UUIDv7), collision-free under the CSPRNG, and deterministic under injected generators (unit-testable). `VARCHAR` columns, explicit id contracts, and seeded identifiers are unchanged.
+
+### ADR-0044: OWASP-Grade scrypt Parameters with Transparent Hash Upgrades (Stage 8.2)
+
+* **Context:** Password hashes used scrypt `N=2^14, r=8, p=1` — below the OWASP Password Storage Cheat Sheet minimum work factor (`N=2^17`) — and the hard-coded `maxmem` was too small to compute larger `N`. Existing hashes (N=16384) must keep verifying.
+* **Decision:**
+  1. `ScryptPasswordHasher` (`packages/database/src/security/scrypt-password-hasher.ts`) defaults to `N=2^17, r=8, p=1` (OWASP-aligned), 16-byte CSPRNG salt, 64-byte derived key, encoded as `scrypt$N=…,r=…,p=…$salt$key`; `maxmem` is computed as `256*N*r + 1 MiB` so any accepted configuration completes without `maxmem` errors.
+  2. Environment overrides `VGOLD_SCRYPT_N/R/P` with a safe floor: `N` must be a power of two ≥ 2^14, `r ∈ [8,32]`, `p ∈ [1,16]`; violating configuration fails fast at construction (`ValidationError`). Effective parameters = override > env > default.
+  3. `verify` parses `N`/`r`/`p` from the stored hash itself (bounded check `2^10 ≤ N ≤ 2^22`), so legacy N=16384 hashes remain valid indefinitely. The `PasswordHasher` port gains optional `needsRehash(hash)` — true for unparseable or weaker-than-current parameters.
+  4. After a **successful** login (`AuthService.login`), when `needsRehash` is true the stored hash is transparently upgraded via `User.changePassword(newHash)` + `userRepo.save` — same password, current parameters — before the session is created. Failed logins and status-blocked accounts (suspended) never touch the hash.
+* **Consequences:** New hashes carry the OWASP work factor; old hashes verify at their original cost and are upgraded on their next successful login. Test fixtures using opaque `PasswordHash.create(...)` strings are unaffected (creation does not parse the encoded form).
+
+### ADR-0045: 22-Karat Fineness Canonicalized to 916 (Stage 8.2)
+
+* **Context:** `STANDARD_PURITY_DEFINITIONS.K22.fineness` was `916.6` and `fromKarat('22')` derived `0.9166…`, while every other karat uses clean millesimal marks (`24K→999.9`, `21K→875`, `18K→750`, `14K→585`). ISO 9202 millesimal fineness marks for 22K are 916/917; 916 matches the rounding style already used for 14K's 585.
+* **Decision:** The canonical 22K fineness is **916**: the standard-definition table, the `fromKarat('22')` canonical branch (new), and therefore `pureGoldFraction = 0.916`. Custom fineness values (e.g. a user-defined `916.6` via `fromFineness`) remain legal — only the 22K standard mark changed. The pricing-engine fixture declaring `expectedFactor: '0.9166'` for 22K now declares `'0.916'`.
+* **Consequences (documented pricing effect):** A 22K piece's pure-gold content drops by ≈ **0.0655 %** (10 g of 22K = 9.160 g fine gold instead of 9.166 g). Every 22K quote decreases proportionally (−0.0655 % of the gold-content component); other karats are unaffected.
+
+### ADR-0046: PostgreSQL Decision Record — Real Connection Deferred to Stage 8.3 (Stage 8.2)
+
+* **Context:** The integrity audit rated the in-memory-only persistence runtime (the `pg` driver has never been installed) as a mandatory pre-Stage-9 remediation. Stage 8.2 was scoped to record the database decision only.
+* **Decision:** The production persistence engine is **PostgreSQL** (matching the existing Drizzle schema definitions and the sequential SQL migrations). The real connection — driver installation, a safe additive (non-destructive) migration path against a live database, and Row-Level Security — is scheduled for **Stage 8.3 (next session)**, before Stage 9 begins. Stage 8.2 makes no schema or migration change.
+* **Consequences:** The decision is recorded now; the runtime remains in-memory until Stage 8.3 attaches PostgreSQL without destructive migration.
+
 ---
 
 ## 9. Security & Boundary Hardening Status

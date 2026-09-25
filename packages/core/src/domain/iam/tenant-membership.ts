@@ -1,5 +1,6 @@
 import { Entity } from '../../common/entity.js';
 import { createEntityId, type EntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import { ValidationError } from '../../common/errors.js';
 import { err, ok, type Result } from '../../common/result.js';
 import { AuditMetadata } from '../audit/audit-metadata.js';
@@ -75,7 +76,7 @@ export class TenantMembership extends Entity<MembershipId> {
     }
 
     const membershipId = createEntityId<MembershipId>(
-      props.id ?? `mem_${Math.random().toString(36).slice(2, 10)}`
+      props.id ?? generateId('mem')
     );
     const audit = AuditMetadata.create(props.actor);
 

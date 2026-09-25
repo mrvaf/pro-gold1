@@ -20,6 +20,7 @@ import {
   type MarketReferenceSnapshot,
 } from './pricing-result.js';
 import { createEntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import crypto from 'node:crypto';
 
 export interface PricingContext {
@@ -339,7 +340,7 @@ export class PricingEngine {
 
     // 15. Create PricingResult
     const resultId = createEntityId<PricingResultId>(
-      context.resultId ?? `prc_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`
+      context.resultId ?? generateId('prc')
     );
 
     const result = new PricingResult(resultId, {

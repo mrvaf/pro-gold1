@@ -15,7 +15,7 @@ export interface GoldPurityProps {
  */
 export const STANDARD_PURITY_DEFINITIONS = {
   K24: { karat: '24', fineness: '999.9' },
-  K22: { karat: '22', fineness: '916.6' },
+  K22: { karat: '22', fineness: '916' },
   K21: { karat: '21', fineness: '875' },
   K18: { karat: '18', fineness: '750' },
   K14: { karat: '14', fineness: '585' },
@@ -101,6 +101,8 @@ export class GoldPurity extends ValueObject<GoldPurityProps> {
       // Canonical adjustment for standard karats
       if (dec.equals(24)) {
         fineness = new Decimal('999.9');
+      } else if (dec.equals(22)) {
+        fineness = new Decimal('916');
       } else if (dec.equals(21)) {
         fineness = new Decimal('875');
       } else if (dec.equals(18)) {

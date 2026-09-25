@@ -1,5 +1,6 @@
 import { Entity } from '../../common/entity.js';
 import { createEntityId, type EntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import { ValidationError } from '../../common/errors.js';
 import { err, ok, type Result } from '../../common/result.js';
 import type { ActorReference } from '../identity/actor-reference.js';
@@ -180,7 +181,7 @@ export class InventoryMovement extends Entity<InventoryMovementId> {
     }
 
     const id = createEntityId<InventoryMovementId>(
-      props.id ?? `mov_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+      props.id ?? generateId('mov')
     );
     const occurredAt = props.occurredAt ?? new Date();
 

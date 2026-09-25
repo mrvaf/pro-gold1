@@ -1,5 +1,6 @@
 import { Entity } from '../../common/entity.js';
 import { createEntityId, type EntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import { ValidationError } from '../../common/errors.js';
 import { ok, err, type Result } from '../../common/result.js';
 import { AuditMetadata } from '../audit/audit-metadata.js';
@@ -208,7 +209,7 @@ export class SellerListing extends Entity<SellerListingId> {
       }
     }
 
-    const id = createEntityId<SellerListingId>(props.id ?? `list_${normalizedSlug}_${Date.now().toString(36)}`);
+    const id = createEntityId<SellerListingId>(props.id ?? generateId('list'));
     const audit = AuditMetadata.create(props.actor ?? ActorReference.system());
     const visibility = props.visibility ?? 'PUBLIC';
     const cleanTags = (props.tags ?? []).map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0);

@@ -3,10 +3,10 @@ import type { PgDatabase } from 'drizzle-orm/pg-core';
 import {
   type FxRateRepositoryPort,
   FxRate,
+  generateId,
   type CurrencyCode,
 } from '@v-gold/core';
 import { fxRatesTable, type FxRateRecord } from '../schema/fx-rates.js';
-import crypto from 'node:crypto';
 
 export const toDomainFxRate = (record: FxRateRecord): FxRate => {
   const result = FxRate.create({
@@ -25,7 +25,7 @@ export const toDomainFxRate = (record: FxRateRecord): FxRate => {
 };
 
 export const toDatabaseFxRate = (rate: FxRate, id?: string): Omit<FxRateRecord, 'createdAt'> => ({
-  id: id ?? `fx_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
+  id: id ?? generateId('fx'),
   baseCurrency: rate.baseCurrency,
   quoteCurrency: rate.quoteCurrency,
   rate: rate.rate.toString(),
@@ -37,7 +37,7 @@ export class DrizzleFxRateRepository implements FxRateRepositoryPort {
   constructor(private readonly db: PgDatabase<any>) {}
 
   async save(rate: FxRate): Promise<void> {
-    const id = `fx_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
+    const id = generateId('fx');
     await this.db
       .insert(fxRatesTable)
       .values({

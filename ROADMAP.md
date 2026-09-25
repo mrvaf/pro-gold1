@@ -150,6 +150,17 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 
 ---
 
+### Stage 8.2 — ID/scrypt/Purity Hardening
+* **Status:** **COMPLETE & FINALIZED**
+* **Focus:**
+  - UUIDv7 entity identifiers from a single `IdGenerator` port (RFC 9562; CSPRNG via `globalThis.crypto.getRandomValues`), injectable via `setDefaultIdGenerator`; all 12 `Math.random`/`Date.now` fallback sites (plus the mock provider's `externalId`) now delegate to `generateId` (ADR-0043).
+  - scrypt password hashing upgraded to OWASP parameters `N=2^17, r=8, p=1` with computed `maxmem`, environment overrides (`VGOLD_SCRYPT_N/R/P`) behind a safe floor (`N ≥ 2^14`), parameters read from the stored hash (legacy N=16384 hashes keep verifying), and transparent re-hash after successful login (ADR-0044).
+  - 22-karat fineness canonicalized from 916.6 to **916** (ISO 9202 millesimal mark, aligned with the 585/14K style); documented pricing effect: ≈ −0.0655 % gold content (ADR-0045).
+  - PostgreSQL decision recorded (ADR-0046): real connection, safe migration, and RLS deferred to Stage 8.3, before Stage 9.
+* **Completion Criteria:** 537 tests passing (525 baseline preserved + 12 new: IdGenerator suite, transparent hash-upgrade suite, scrypt legacy-compat/env-floor tests, 22K→916 purity test); typecheck PASS; build PASS.
+
+---
+
 ### Stage 9 — AI Conversational Designer
 * **Status:** **PENDING**
 * **Focus:**

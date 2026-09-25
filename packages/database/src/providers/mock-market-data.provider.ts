@@ -5,6 +5,7 @@ import {
   ProviderError,
   type MarketInstrument,
   createEntityId,
+  generateId,
   type MarketDataSourceId,
   err,
   ok,
@@ -110,7 +111,7 @@ export class MockMarketDataProvider implements MarketDataProviderPort {
       observedAt: new Date(),
       bid: '2650.25000000',
       ask: '2650.75000000',
-      externalId: `mock_${Date.now()}`,
+      externalId: generateId('mock'),
     });
   }
 }

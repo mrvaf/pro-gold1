@@ -182,6 +182,14 @@ export class AuthService {
       return err(new ForbiddenError('User account is currently suspended.'));
     }
 
+    // Stage 8.2 (ADR-0044): transparently upgrade legacy hash parameters
+    // (e.g. scrypt N=2^14) to the current policy after successful login.
+    if (this.passwordHasher.needsRehash?.(user.passwordHash.value)) {
+      const upgradedHash = await this.passwordHasher.hash(input.password);
+      user.changePassword(PasswordHash.create(upgradedHash).unwrap());
+      await this.userRepo.save(user);
+    }
+
     // Create fresh session (resisting session fixation)
     const randomToken = crypto.randomBytes(32).toString('hex');
     const sessionResult = Session.create({
