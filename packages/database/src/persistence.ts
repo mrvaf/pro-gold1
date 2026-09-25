@@ -34,6 +34,7 @@ import type {
   SocialCommerceRepositoryPort,
   SocialPublishingPort,
   TrustSafetyRepositoryPort,
+  AnalyticsRepositoryPort,
 } from '@v-gold/core';
 import { createDatabaseConfigFromEnv } from './config.js';
 import { InMemoryDesignSessionRepository } from './adapters/in-memory-design-session.repository.js';
@@ -51,6 +52,7 @@ import {
 import { InMemoryContentStudioRepository } from './adapters/in-memory-content-studio.repository.js';
 import { InMemorySocialCommerceRepository } from './adapters/in-memory-social-commerce.repository.js';
 import { InMemoryTrustSafetyRepository } from './adapters/in-memory-trust-safety.repository.js';
+import { PersistenceAnalyticsRepository } from './adapters/persistence-analytics.repository.js';
 import { MockSocialPublishingAdapter } from './adapters/mock-social-publishing.adapter.js';
 import { MockStudio3DStorageAdapter } from './adapters/mock-studio-3d-storage.adapter.js';
 import { DrizzleDesignSessionRepository } from './repositories/drizzle-design-session.repository.js';
@@ -187,6 +189,7 @@ export interface Persistence {
   readonly socialCommerceRepository: SocialCommerceRepositoryPort;
   readonly socialPublishing: SocialPublishingPort;
   readonly trustSafetyRepository: TrustSafetyRepositoryPort;
+  readonly analyticsRepository: AnalyticsRepositoryPort;
   close(): Promise<void>;
 }
 
@@ -234,6 +237,10 @@ const createInMemoryPersistence = (): Persistence => {
     socialCommerceRepository: new InMemorySocialCommerceRepository(),
     socialPublishing: new MockSocialPublishingAdapter(),
     trustSafetyRepository: new InMemoryTrustSafetyRepository(),
+    analyticsRepository: new PersistenceAnalyticsRepository(
+      new InMemoryOrderRepository(),
+      itemRepo
+    ),
     close: async (): Promise<void> => {
       // in-memory: nothing to release
     },
@@ -345,6 +352,10 @@ const createDrizzlePersistence = (connection: PgConnection): Persistence => {
     trustSafetyRepository: new TenantScopedTrustSafetyRepository(
       new DrizzleTrustSafetyRepository(db),
       db
+    ),
+    analyticsRepository: new PersistenceAnalyticsRepository(
+      new TenantScopedOrderRepository(new DrizzleOrderRepository(db), db),
+      itemRepo
     ),
     close: async (): Promise<void> => {
       sharedPgConnection = null;

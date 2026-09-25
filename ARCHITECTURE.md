@@ -739,6 +739,21 @@ Stage 20 introduces verification and trust mechanics across jewelry sellers, ass
    - `POST /api/v1/trust/reviews/[id]/moderate`: Approves/rejects customer review.
    - `GET /api/v1/trust/scores/[sellerId]`: Real-time trust breakdown and tier calculation.
 
+## ADR-0062: Analytics & Business Intelligence Engine
+
+### Context
+Stage 21 introduces operational analytics, revenue accounting, and inventory turnover dashboards for sellers. Luxury commerce and precious metal trading require zero data fabrication: financial calculations, taxes collected, and gold mass turnover rates must be computed with mathematical precision directly from immutable orders and inventory states, with absolute tenant isolation.
+
+### Decision
+1. **Domain Models & Verifiable Aggregation**:
+   - `AnalyticsAggregator`: Aggregates performance metrics directly from persisted `Order` and `InventoryItem` domain entities.
+   - Financial metrics (`totalGrossRevenue`, `totalTaxCollected`, `averageOrderValue`) preserve exact monetary values via `Money` and reject currency cross-contamination.
+   - Inventory turnover metrics compute available, reserved, and sold item quantities, total grams of gold held, and turnover velocity rates.
+2. **Persistence Architecture & Multi-Tenant Boundaries**:
+   - `PersistenceAnalyticsRepository`: Connects directly to tenant-scoped order and inventory repositories, guaranteeing that aggregation queries run exclusively within the calling tenant's RLS boundary.
+3. **REST API**:
+   - `GET /api/v1/analytics/performance`: Exposes seller operational dashboard with optional `from` and `to` ISO date range filtering under `tenant.read`.
+
 
 
 

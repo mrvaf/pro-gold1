@@ -118,6 +118,9 @@ export * from './schema/trust-safety.js';
 export * from './adapters/in-memory-trust-safety.repository.js';
 export * from './repositories/drizzle-trust-safety.repository.js';
 
+// Analytics & Business Intelligence (Stage 21)
+export * from './adapters/persistence-analytics.repository.js';
+
 
 
 

@@ -199,6 +199,11 @@ export * from './domain/trust-safety/customer-review.js';
 export * from './domain/trust-safety/trust-score.js';
 export * from './ports/trust-safety.port.js';
 
+// Analytics & Business Intelligence (Stage 21)
+export * from './domain/analytics/analytics-errors.js';
+export * from './domain/analytics/analytics-aggregator.js';
+export * from './ports/analytics.port.js';
+
 
 
 

@@ -318,11 +318,12 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 21 — Analytics & Business Intelligence
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
   - Pure analytical aggregation of persisted order, product, and inventory data.
   - Real-time seller revenue, margin, and gold turnover metrics.
-* **Completion Criteria:** Zero fabricated analytics data; queries enforce tenant boundaries.
+  - REST endpoint: `GET /api/v1/analytics/performance`.
+* **Completion Criteria:** 650 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0062 recorded; zero fabricated analytics data; queries enforce tenant boundaries.
 
 ---
 
