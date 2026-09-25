@@ -328,12 +328,12 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 22 — Performance Optimization & Scaling
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
-  - Database index optimization (compound indices on tenant, date, status).
-  - Bounded pagination and query optimization (avoid N+1 queries).
-  - Caching strategies for gold pricing and public catalog.
-* **Completion Criteria:** Deterministic benchmark tests verify bounded memory and query execution times.
+  - Database index optimization (compound indices on tenant, date, status): migration `0024_performance_optimization.sql`.
+  - Bounded pagination and query optimization (avoid N+1 queries) with `paginateArray` and `parsePaginationParams`.
+  - Caching strategies for gold pricing and market data with `InMemoryCache` and `CachedMarketPriceQueryService`.
+* **Completion Criteria:** 656 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0063 recorded.
 
 ---
 

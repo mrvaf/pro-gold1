@@ -204,6 +204,12 @@ export * from './domain/analytics/analytics-errors.js';
 export * from './domain/analytics/analytics-aggregator.js';
 export * from './ports/analytics.port.js';
 
+// Performance Optimization & Scaling (Stage 22)
+export * from './common/pagination.js';
+export * from './common/cache.js';
+export * from './domain/market-data/cached-market-price-query.service.js';
+
+
 
 
 

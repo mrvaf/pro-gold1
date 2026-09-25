@@ -754,6 +754,21 @@ Stage 21 introduces operational analytics, revenue accounting, and inventory tur
 3. **REST API**:
    - `GET /api/v1/analytics/performance`: Exposes seller operational dashboard with optional `from` and `to` ISO date range filtering under `tenant.read`.
 
+## ADR-0063: Performance Optimization, Compound Indexing & Caching Architecture
+
+### Context
+Stage 22 addresses performance scaling across high-volume jewelry commerce, precious metals pricing, and inventory management. As tenant order volume and physical inventory movements expand, unindexed sequential scans and repeated real-time spot price queries introduce latency.
+
+### Decision
+1. **Compound Index Optimization**:
+   - Sequential migration `0024_performance_optimization.sql` introduces compound indices on critical high-cardinality multi-tenant tables (`orders(tenant_id, created_at DESC)`, `inventory_items(tenant_id, status)`, `seller_listings(tenant_id, status, created_at DESC)`, `customer_reviews(tenant_id, seller_profile_id, moderation_status)`).
+2. **Deterministic Bounded Pagination**:
+   - Strict `PaginationParams` and `PaginatedResult<T>` utilities enforcing max limits (100) and keyset cursor-based progression to prevent $O(N)$ full-scan penalties.
+3. **In-Memory Caching Port & Invalidation Lifecycle**:
+   - `CachePort<T>` and `InMemoryCache<T>` providing deterministic TTL-based caching and explicit purge hooks.
+   - `CachedMarketPriceQueryService`: Wraps market observation repositories to cache gold spot prices within freshness windows while isolating tenant cache keys.
+
+
 
 
 
