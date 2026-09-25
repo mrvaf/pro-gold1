@@ -8,6 +8,7 @@
     "apps/*"
   ],
   "scripts": {
+    "dev": "npm run dev --workspace=@v-gold/web",
     "test": "vitest run",
     "typecheck": "npm run --workspaces --if-present typecheck && tsc -p tests/tsconfig.json --noEmit",
     "build": "npm run --workspace=packages/core build && npm run --workspace=packages/database build && npm run --workspace=packages/ai-gateway build && npm run --workspace=apps/web build"
