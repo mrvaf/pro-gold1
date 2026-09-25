@@ -35,6 +35,7 @@ describe('Stage 24 — Production Readiness & Operations Tests', () => {
   describe('Health Probes (Liveness & Readiness)', () => {
     it('responds healthy for liveness probe (/api/health/live)', async () => {
       const mockReq: any = {
+        url: 'http://localhost:3000/api/health/live',
         headers: new Headers(),
         nextUrl: new URL('http://localhost:3000/api/health/live'),
       };
@@ -49,6 +50,7 @@ describe('Stage 24 — Production Readiness & Operations Tests', () => {
 
     it('responds ready with storage runtime details for readiness probe (/api/health/ready)', async () => {
       const mockReq: any = {
+        url: 'http://localhost:3000/api/health/ready',
         headers: new Headers(),
         nextUrl: new URL('http://localhost:3000/api/health/ready'),
       };
