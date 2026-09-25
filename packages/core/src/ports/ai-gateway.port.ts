@@ -1,6 +1,7 @@
 import type { Result } from '../common/result.js';
 import type { AiProviderUnavailableError, DomainError } from '../common/errors.js';
 import type { ExtractedDesignAttributes } from '../domain/ai-designer/extracted-design-attributes.js';
+import type { TokenAccounting } from '../domain/ai-designer/token-accounting.js';
 
 export interface AiPromptRequest {
   readonly systemPrompt?: string;
@@ -36,6 +37,24 @@ export interface AttributeExtractionResponse {
   readonly model: string;
 }
 
+export interface ConceptGenerationRequest {
+  readonly promptRefinement: string;
+  readonly groundedAttributes: ExtractedDesignAttributes;
+  readonly idempotencyKey: string;
+  readonly timeoutMs?: number;
+}
+
+export interface ConceptGenerationResponse {
+  readonly title: string;
+  readonly description: string;
+  readonly promptRefinement: string;
+  readonly visualPrompt: string;
+  readonly groundedAttributes: ExtractedDesignAttributes;
+  readonly tokenAccounting: TokenAccounting;
+  readonly provider: string;
+  readonly model: string;
+}
+
 /**
  * Pure Port for AI Operations.
  * Domain and Application layers interact with this abstraction only.
@@ -48,4 +67,8 @@ export interface AiGatewayPort {
   extractDesignAttributes?(
     request: AttributeExtractionRequest
   ): Promise<Result<AttributeExtractionResponse, AiProviderUnavailableError | DomainError>>;
+
+  generateConcept?(
+    request: ConceptGenerationRequest
+  ): Promise<Result<ConceptGenerationResponse, AiProviderUnavailableError | DomainError>>;
 }

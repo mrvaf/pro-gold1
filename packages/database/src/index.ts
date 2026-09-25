@@ -66,3 +66,8 @@ export * from './security/scrypt-password-hasher.js';
 export * from './schema/design-sessions.js';
 export * from './adapters/in-memory-design-session.repository.js';
 export * from './repositories/drizzle-design-session.repository.js';
+
+// Design Concept (Stage 10)
+export * from './schema/design-concepts.js';
+export * from './adapters/in-memory-design-concept.repository.js';
+export * from './repositories/drizzle-design-concept.repository.js';

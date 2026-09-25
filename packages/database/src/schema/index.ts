@@ -20,3 +20,4 @@ export * from './seller-workspaces.js';
 
 
 export * from './design-sessions.js';
+export * from './design-concepts.js';

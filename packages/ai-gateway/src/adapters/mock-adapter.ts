@@ -4,7 +4,10 @@ import {
   type AiPromptResponse,
   type AttributeExtractionRequest,
   type AttributeExtractionResponse,
+  type ConceptGenerationRequest,
+  type ConceptGenerationResponse,
   ExtractedDesignAttributes,
+  TokenAccounting,
   ok,
   type Result,
 } from '@v-gold/core';
@@ -29,6 +32,7 @@ export class MockAiGatewayAdapter implements AiGatewayPort {
 
   public lastRequest: AiPromptRequest | null = null;
   public lastExtractionRequest: AttributeExtractionRequest | null = null;
+  public lastConceptRequest: ConceptGenerationRequest | null = null;
   public callCount = 0;
 
   constructor(options: MockAiGatewayOptions = {}) {
@@ -79,6 +83,36 @@ export class MockAiGatewayAdapter implements AiGatewayPort {
     return ok({
       assistantReply: this.defaultAssistantReply,
       extractedAttributes: this.defaultExtractedAttributes,
+      provider: 'mock',
+      model: this.modelName,
+    });
+  }
+
+  async generateConcept(
+    request: ConceptGenerationRequest
+  ): Promise<Result<ConceptGenerationResponse, never>> {
+    this.lastConceptRequest = request;
+    this.callCount++;
+
+    if (this.simulateTimeout) {
+      await new Promise((resolve) => setTimeout(resolve, (request.timeoutMs ?? 50) + 20));
+    }
+
+    const tokens = TokenAccounting.create({
+      promptTokens: 120,
+      completionTokens: 80,
+      totalTokens: 200,
+      provider: 'mock',
+      model: this.modelName,
+    }).unwrap();
+
+    return ok({
+      title: 'Elegance Solitaire Concept',
+      description: 'A finely crafted 18K yellow gold band holding a brilliant round diamond.',
+      promptRefinement: request.promptRefinement,
+      visualPrompt: 'High quality studio photography of an 18K gold diamond solitaire ring on dark silk',
+      groundedAttributes: request.groundedAttributes,
+      tokenAccounting: tokens,
       provider: 'mock',
       model: this.modelName,
     });

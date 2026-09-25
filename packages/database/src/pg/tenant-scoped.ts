@@ -52,6 +52,9 @@ import type {
   DesignSession,
   DesignSessionId,
   DesignSessionRepositoryPort,
+  DesignConcept,
+  DesignConceptId,
+  DesignConceptRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -475,6 +478,45 @@ export class TenantScopedDesignSessionRepository implements DesignSessionReposit
   }
 
   delete(id: DesignSessionId, tenantId?: TenantId): Promise<void> {
+    return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
+  }
+
+  count(tenantId?: TenantId): Promise<number> {
+    return withTenantContext(this.db, tenantId, () => this.inner.count(tenantId));
+  }
+}
+
+export class TenantScopedDesignConceptRepository implements DesignConceptRepositoryPort {
+  constructor(
+    private readonly inner: DesignConceptRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(concept: DesignConcept): Promise<void> {
+    return withTenantContext(this.db, tenantOf(concept), () => this.inner.save(concept));
+  }
+
+  findById(id: DesignConceptId, tenantId?: TenantId): Promise<DesignConcept | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  findByIdempotencyKey(
+    tenantId: TenantId,
+    sessionId: DesignSessionId,
+    idempotencyKey: string
+  ): Promise<DesignConcept | null> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.findByIdempotencyKey(tenantId, sessionId, idempotencyKey)
+    );
+  }
+
+  listBySession(sessionId: DesignSessionId, tenantId: TenantId): Promise<DesignConcept[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.listBySession(sessionId, tenantId)
+    );
+  }
+
+  delete(id: DesignConceptId, tenantId?: TenantId): Promise<void> {
     return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
   }
 

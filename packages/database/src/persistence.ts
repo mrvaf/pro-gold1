@@ -20,10 +20,13 @@ import type {
   TenantRepositoryPort,
   UserRepositoryPort,
   DesignSessionRepositoryPort,
+  DesignConceptRepositoryPort,
 } from '@v-gold/core';
 import { createDatabaseConfigFromEnv } from './config.js';
 import { InMemoryDesignSessionRepository } from './adapters/in-memory-design-session.repository.js';
+import { InMemoryDesignConceptRepository } from './adapters/in-memory-design-concept.repository.js';
 import { DrizzleDesignSessionRepository } from './repositories/drizzle-design-session.repository.js';
+import { DrizzleDesignConceptRepository } from './repositories/drizzle-design-concept.repository.js';
 import { InMemoryFxRateRepository } from './adapters/in-memory-fx-rate.repository.js';
 import { InMemoryInventoryItemRepository } from './adapters/in-memory-inventory-item.repository.js';
 import { InMemoryInventoryLocationRepository } from './adapters/in-memory-inventory-location.repository.js';
@@ -80,6 +83,7 @@ import {
   TenantScopedStoreRepository,
   TenantScopedTenantMembershipRepository,
   TenantScopedDesignSessionRepository,
+  TenantScopedDesignConceptRepository,
 } from './pg/tenant-scoped.js';
 
 /**
@@ -117,6 +121,7 @@ export interface Persistence {
   readonly sellerListingRepository: SellerListingRepositoryPort;
   readonly sellerWorkspaceRepository: SellerWorkspaceRepositoryPort;
   readonly designSessionRepository: DesignSessionRepositoryPort;
+  readonly designConceptRepository: DesignConceptRepositoryPort;
   close(): Promise<void>;
 }
 
@@ -150,6 +155,7 @@ const createInMemoryPersistence = (): Persistence => {
     sellerListingRepository: new InMemorySellerListingRepository(),
     sellerWorkspaceRepository: new InMemorySellerWorkspaceRepository(),
     designSessionRepository: new InMemoryDesignSessionRepository(),
+    designConceptRepository: new InMemoryDesignConceptRepository(),
     close: async (): Promise<void> => {
       // in-memory: nothing to release
     },
@@ -210,6 +216,10 @@ const createDrizzlePersistence = (connection: PgConnection): Persistence => {
     ),
     designSessionRepository: new TenantScopedDesignSessionRepository(
       new DrizzleDesignSessionRepository(db),
+      db
+    ),
+    designConceptRepository: new TenantScopedDesignConceptRepository(
+      new DrizzleDesignConceptRepository(db),
       db
     ),
     close: async (): Promise<void> => {

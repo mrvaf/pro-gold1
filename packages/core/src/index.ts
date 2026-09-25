@@ -116,3 +116,10 @@ export * from './domain/ai-designer/design-message.js';
 export * from './domain/ai-designer/extracted-design-attributes.js';
 export * from './domain/ai-designer/design-session.js';
 export * from './ports/design-session.repository.port.js';
+
+// AI Concept Generation Foundations (Stage 10)
+export * from './domain/ai-designer/concept-errors.js';
+export * from './domain/ai-designer/token-accounting.js';
+export * from './domain/ai-designer/concept-status.js';
+export * from './domain/ai-designer/design-concept.js';
+export * from './ports/design-concept.repository.port.js';

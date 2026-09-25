@@ -5,6 +5,8 @@ import type {
   AiProviderUnavailableError,
   AttributeExtractionRequest,
   AttributeExtractionResponse,
+  ConceptGenerationRequest,
+  ConceptGenerationResponse,
   DomainError,
   Result,
 } from '@v-gold/core';
@@ -61,6 +63,29 @@ export class AiGatewayClient implements AiGatewayPort {
       () => this.adapter.extractDesignAttributes!(request),
       timeoutMs,
       'Attribute extraction timed out'
+    );
+  }
+
+  async generateConcept(
+    request: ConceptGenerationRequest
+  ): Promise<Result<ConceptGenerationResponse, AiProviderUnavailableError | DomainError>> {
+    const timeoutMs = request.timeoutMs ?? this.defaultTimeoutMs;
+
+    if (!this.adapter.generateConcept) {
+      return this.withTimeout(
+        () =>
+          new UnavailableAiGatewayAdapter(
+            'Adapter does not support concept generation.'
+          ).generateConcept(request),
+        timeoutMs,
+        'Concept generation timed out'
+      );
+    }
+
+    return this.withTimeout(
+      () => this.adapter.generateConcept!(request),
+      timeoutMs,
+      'Concept generation timed out'
     );
   }
 

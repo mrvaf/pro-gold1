@@ -184,12 +184,15 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 10 — AI Concept Generation
-* **Status:** **PENDING**
+* **Status:** **COMPLETE & FINALIZED**
 * **Focus:**
-  - Concept generation pipeline with prompt refinement.
-  - Strict domain attribute grounding: AI cannot alter validated material specs.
-  - Generation idempotency and token accounting.
-* **Completion Criteria:** Output validation enforces domain boundaries; mock provider fallback passes.
+  - Concept generation pipeline (`DesignConcept`) with prompt refinement and creative design proposals.
+  - Strict domain attribute grounding: AI cannot alter validated material specs (enforced via `ConceptGroundingViolationError`).
+  - Generation idempotency (`idempotencyKey` uniqueness) and comprehensive token accounting (`TokenAccounting`).
+  - Resilient AI Gateway integration with timeout protection and fallback.
+  - Multi-tenant persistence: `design_concepts` schema, migration `0014_ai_concept_generation.sql` with Row-Level Security, Drizzle/In-Memory repositories, and tenant-scoped decorators.
+  - API endpoints `/api/v1/ai/design-sessions/[id]/concepts` with session auth, approval workflow, and IDOR protection.
+* **Completion Criteria:** 588 tests passing; zero regressions; typecheck PASS; build PASS; output validation enforces domain boundaries; mock provider fallback passes.
 
 ---
 
