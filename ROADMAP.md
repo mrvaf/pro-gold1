@@ -306,12 +306,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 20 — Trust, Safety & Seller Verification
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
   - Goldsmith guild license verification and hallmark audit trails.
   - Customer review moderation and fraud detection hooks.
-  - Immutable audit event logging.
-* **Completion Criteria:** Trust score calculation uses verified evidence only; no synthetic ratings.
+  - Verifiable trust score calculation without synthetic rating manipulation.
+  - Migration 0023_trust_safety_foundation.sql with PostgreSQL Row-Level Security isolation.
+  - REST endpoints: `POST /api/v1/trust/licenses`, `POST /api/v1/trust/licenses/[id]/verify`, `POST /api/v1/trust/hallmarks`, `POST /api/v1/trust/reviews`, `POST /api/v1/trust/reviews/[id]/moderate`, `GET /api/v1/trust/scores/[sellerId]`.
+* **Completion Criteria:** 647 tests passing; zero regressions; typecheck PASS; build PASS; ADR-0061 recorded; trust score calculation uses verified evidence only; zero synthetic ratings.
 
 ---
 

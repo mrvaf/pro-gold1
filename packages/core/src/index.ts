@@ -192,5 +192,13 @@ export * from './domain/social-commerce/secure-credential-vault.js';
 export * from './domain/social-commerce/publishing-post.js';
 export * from './ports/social-commerce.port.js';
 
+// Trust, Safety & Seller Verification (Stage 20)
+export * from './domain/trust-safety/trust-safety-errors.js';
+export * from './domain/trust-safety/guild-verification.js';
+export * from './domain/trust-safety/customer-review.js';
+export * from './domain/trust-safety/trust-score.js';
+export * from './ports/trust-safety.port.js';
+
+
 
 

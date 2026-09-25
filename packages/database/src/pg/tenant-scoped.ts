@@ -86,6 +86,10 @@ import type {
   PublishingChannel,
   PublishingPost,
   SocialCommerceRepositoryPort,
+  GuildLicense,
+  HallmarkAuditRecord,
+  CustomerReview,
+  TrustSafetyRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -848,4 +852,52 @@ export class TenantScopedSocialCommerceRepository implements SocialCommerceRepos
     );
   }
 }
+
+export class TenantScopedTrustSafetyRepository implements TrustSafetyRepositoryPort {
+  constructor(
+    private readonly inner: TrustSafetyRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  saveGuildLicense(license: GuildLicense): Promise<void> {
+    return withTenantContext(this.db, license.tenantId, () => this.inner.saveGuildLicense(license));
+  }
+
+  findGuildLicenseById(id: string, tenantId: TenantId): Promise<GuildLicense | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findGuildLicenseById(id, tenantId));
+  }
+
+  findGuildLicenseBySeller(sellerProfileId: string, tenantId: TenantId): Promise<GuildLicense | null> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.findGuildLicenseBySeller(sellerProfileId, tenantId)
+    );
+  }
+
+  saveHallmarkAudit(record: HallmarkAuditRecord): Promise<void> {
+    return withTenantContext(this.db, record.tenantId, () => this.inner.saveHallmarkAudit(record));
+  }
+
+  findHallmarkAuditsByTenant(tenantId: TenantId): Promise<HallmarkAuditRecord[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findHallmarkAuditsByTenant(tenantId));
+  }
+
+  countHallmarkAuditsByTenant(tenantId: TenantId): Promise<number> {
+    return withTenantContext(this.db, tenantId, () => this.inner.countHallmarkAuditsByTenant(tenantId));
+  }
+
+  saveReview(review: CustomerReview): Promise<void> {
+    return withTenantContext(this.db, review.tenantId, () => this.inner.saveReview(review));
+  }
+
+  findReviewById(id: string, tenantId: TenantId): Promise<CustomerReview | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findReviewById(id, tenantId));
+  }
+
+  findReviewsBySeller(sellerProfileId: string, tenantId: TenantId): Promise<CustomerReview[]> {
+    return withTenantContext(this.db, tenantId, () =>
+      this.inner.findReviewsBySeller(sellerProfileId, tenantId)
+    );
+  }
+}
+
 

@@ -715,6 +715,31 @@ Stage 19 introduces automated social publishing across external platforms (Insta
    - `GET /api/v1/social/posts/[id]`: Retrieves post status.
    - `POST /api/v1/social/posts/[id]/publish`: Triggers execution of due posts via `SocialPublishingPort`.
 
+## ADR-0061: Trust, Safety & Verifiable Seller Integrity
+
+### Context
+Stage 20 introduces verification and trust mechanics across jewelry sellers, assay hallmarks, and consumer reviews. In the luxury and gold sectors, fake reviews, unverified hallmark claims, and arbitrary rating algorithms can facilitate consumer fraud and regulatory violations. Trust scores must be grounded exclusively in auditable, verifiable evidence.
+
+### Decision
+1. **Domain Models & Truthful Evidence Grounding**:
+   - `GuildLicense`: Aggregate root for goldsmith guild registrations, enforcing valid issuance/expiry time windows and formal verification/rejection lifecycles. Expired licenses cannot be verified.
+   - `HallmarkAuditRecord`: Domain model tracking verified assay hallmark codes (e.g. Tehran T750), certified laboratory authorities, and tested gold fineness (375 to 999.9).
+   - `CustomerReview`: Aggregate enforcing verified order association (`orderId`) and two-phase moderation (`PENDING_REVIEW` -> `APPROVED` | `REJECTED`).
+   - `TrustScoreCalculator`: Pure, deterministic calculation combining guild verification (40 pts), certified hallmark audits (up to 20 pts), and verified customer reviews (up to 40 pts). Synthetic or unsubstantiated ratings are strictly excluded.
+
+2. **Multi-Tenant Row-Level Security**:
+   - Tables `guild_licenses`, `hallmark_audit_records`, and `customer_reviews` created in migration `0023_trust_safety_foundation.sql`.
+   - Restrictive policies (`guild_licenses_tenant_isolation`, `hallmark_audit_records_tenant_isolation`, `customer_reviews_tenant_isolation`) ensure absolute tenant boundary isolation.
+
+3. **REST API**:
+   - `POST /api/v1/trust/licenses`: Submits guild license for verification.
+   - `POST /api/v1/trust/licenses/[id]/verify`: Platform admin verifies/rejects license.
+   - `POST /api/v1/trust/hallmarks`: Records spectrometer/assay hallmark inspection.
+   - `POST /api/v1/trust/reviews`: Submits verified purchase customer review.
+   - `POST /api/v1/trust/reviews/[id]/moderate`: Approves/rejects customer review.
+   - `GET /api/v1/trust/scores/[sellerId]`: Real-time trust breakdown and tier calculation.
+
+
 
 
 

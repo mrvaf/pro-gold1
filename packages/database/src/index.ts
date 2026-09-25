@@ -113,5 +113,11 @@ export * from './adapters/in-memory-social-commerce.repository.js';
 export * from './repositories/drizzle-social-commerce.repository.js';
 export * from './adapters/mock-social-publishing.adapter.js';
 
+// Trust, Safety & Seller Verification (Stage 20)
+export * from './schema/trust-safety.js';
+export * from './adapters/in-memory-trust-safety.repository.js';
+export * from './repositories/drizzle-trust-safety.repository.js';
+
+
 
 
