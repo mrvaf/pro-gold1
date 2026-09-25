@@ -768,6 +768,18 @@ Stage 22 addresses performance scaling across high-volume jewelry commerce, prec
    - `CachePort<T>` and `InMemoryCache<T>` providing deterministic TTL-based caching and explicit purge hooks.
    - `CachedMarketPriceQueryService`: Wraps market observation repositories to cache gold spot prices within freshness windows while isolating tenant cache keys.
 
+## ADR-0064: Security Hardening, Edge Security Headers & Rate Limiting
+
+### Context
+Stage 23 enforces defense-in-depth protections against OWASP Top 10 web vulnerabilities, clickjacking, MIME-type sniffing, cross-site scripting (XSS), and DoS / credential-stuffing brute-force attacks across all public and tenant endpoints.
+
+### Decision
+1. **HTTP Security Headers & CSP Enforcement**:
+   - `buildSecurityHeaders`: Standardizes hardened security headers including strict Content Security Policy (`frame-ancestors 'none'`, `default-src 'self'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`, and `Referrer-Policy`.
+   - Applied globally via Next.js Edge Middleware (`apps/web/middleware.ts`).
+2. **Defensive Rate Limiting**:
+   - `InMemoryRateLimiter`: Sliding/fixed-window memory-safe rate limiter with remaining counter and reset timestamps for sensitive authentication and public discovery endpoints.
+
 
 
 

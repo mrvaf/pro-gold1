@@ -209,6 +209,9 @@ export * from './common/pagination.js';
 export * from './common/cache.js';
 export * from './domain/market-data/cached-market-price-query.service.js';
 
+// Security Hardening & Penetration Audit (Stage 23)
+export * from './common/security-headers.js';
+export * from './common/rate-limiter.js';
 
 
 

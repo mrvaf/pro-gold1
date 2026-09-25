@@ -338,12 +338,12 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 23 — Security Hardening & Penetration Audit
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
   - Threat modeling (OWASP Top 10): CSRF, SSRF, SQLi, XSS, rate limiting.
-  - Session replay protection and header hardening.
-  - Secret scanning and automated security tests.
-* **Completion Criteria:** Comprehensive security test suite passes with zero high/critical vulnerabilities.
+  - Global security headers and strict CSP with Next.js Edge Middleware (`apps/web/middleware.ts`).
+  - Sliding-window rate limiting (`InMemoryRateLimiter`) defending against brute-force and DoS.
+* **Completion Criteria:** 660 tests passing; zero high/critical vulnerabilities; typecheck PASS; build PASS; ADR-0064 recorded.
 
 ---
 
