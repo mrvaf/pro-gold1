@@ -1,5 +1,6 @@
 import { Entity } from '../../common/entity.js';
 import { createEntityId, type EntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import { ValidationError } from '../../common/errors.js';
 import { err, ok, type Result } from '../../common/result.js';
 import { AuditMetadata } from '../audit/audit-metadata.js';
@@ -84,7 +85,7 @@ export class User extends Entity<UserId> {
       return err(new ValidationError('User display name cannot exceed 100 characters.'));
     }
 
-    const userId = createEntityId<UserId>(props.id ?? `user_${Math.random().toString(36).slice(2, 10)}`);
+    const userId = createEntityId<UserId>(props.id ?? generateId('user'));
     const audit = AuditMetadata.create(props.actor);
 
     return ok(new User(userId, props.email, trimmedDisplayName, props.passwordHash, 'ACTIVE', audit));

@@ -42,6 +42,7 @@ Thumbs.db
 # Temporary files
 /tmp/
 *.tar.gz
+*.zip
 
 .sudo_as_admin_successful
 .config/

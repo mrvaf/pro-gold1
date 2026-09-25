@@ -1,6 +1,7 @@
 import { Decimal } from 'decimal.js';
 import { Entity } from '../../common/entity.js';
 import { createEntityId, type EntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import { ValidationError } from '../../common/errors.js';
 import { err, ok, type Result } from '../../common/result.js';
 import type { TenantId } from '../tenant/tenant.js';
@@ -218,7 +219,7 @@ export class PricingRule extends Entity<PricingRuleId> {
       return err(new ValidationError('effectiveTo must be strictly after effectiveFrom.'));
     }
 
-    const ruleId = createEntityId<PricingRuleId>(params.id ?? `rule_${Date.now()}`);
+    const ruleId = createEntityId<PricingRuleId>(params.id ?? generateId('rule'));
     return ok(
       new PricingRule(
         ruleId,

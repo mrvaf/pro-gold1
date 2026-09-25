@@ -3,6 +3,11 @@ import { z } from 'zod';
 import type { TenantMembership } from '@v-gold/core';
 import { getDefaultAuthService } from '@/lib/auth/auth.service';
 import { createSessionCookieConfig } from '@/lib/auth/session-cookie';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -12,17 +17,14 @@ const loginSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const identityViolation = rejectIdentityInput(req, body);
+    if (identityViolation) {
+      return identityViolation;
+    }
+
     const parseResult = loginSchema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid login parameters.',
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Invalid login parameters.');
     }
 
     const authService = getDefaultAuthService();
@@ -33,16 +35,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (result.isErr) {
-      const error = result.error;
-      return NextResponse.json(
-        {
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        },
-        { status: error.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     const { user, session, memberships } = result.value;
@@ -70,15 +63,7 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred during authentication.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:auth/login');
   }
 }

@@ -1,5 +1,6 @@
 import { Entity } from '../../common/entity.js';
 import { createEntityId, type EntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import { ValidationError, BusinessRuleViolationError } from '../../common/errors.js';
 import { err, ok, type Result } from '../../common/result.js';
 import { AuditMetadata } from '../audit/audit-metadata.js';
@@ -112,7 +113,7 @@ export class Product extends Entity<ProductId> {
     }
 
     const productId = createEntityId<ProductId>(
-      props.id ?? `prod_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+      props.id ?? generateId('prod')
     );
     const audit = AuditMetadata.create(props.actor);
 

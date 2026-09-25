@@ -64,4 +64,21 @@ describe('GoldPurity Value Object', () => {
     expect(p1.equals(p2)).toBe(true);
     expect(p1.equals(p3)).toBe(false);
   });
+
+  it('maps 22K to the ISO 9202 millesimal mark 916 (Stage 8.2, ADR-0045)', () => {
+    // Standard definition table and preset both use 916 (aligned with 585/14K style marks).
+    expect(GoldPurity.K22.fineness.toString()).toBe('916');
+    expect(GoldPurity.K22.karat.toString()).toBe('22');
+    expect(GoldPurity.K22.pureGoldFraction.toString()).toBe('0.916');
+
+    // fromKarat applies the same canonical mark (previously 916.6 / 916.666...).
+    const fromKarat22 = GoldPurity.fromKarat('22').unwrap();
+    expect(fromKarat22.fineness.toString()).toBe('916');
+    expect(fromKarat22.equals(GoldPurity.K22)).toBe(true);
+
+    // Pricing effect (documented in ADR-0045): a 10g 22K piece now carries
+    // 9.160g of pure gold instead of 9.166g (-0.0655% gold content).
+    const tenGrams22K = GoldPurity.K22.pureGoldFraction.times(10);
+    expect(tenGrams22K.toString()).toBe('9.16');
+  });
 });

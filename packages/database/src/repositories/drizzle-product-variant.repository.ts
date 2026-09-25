@@ -121,7 +121,7 @@ export const toDatabaseProductVariant = (variant: ProductVariant): InsertProduct
 };
 
 export class DrizzleProductVariantRepository implements ProductVariantRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(variant: ProductVariant): Promise<void> {
     const record = toDatabaseProductVariant(variant);

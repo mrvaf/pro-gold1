@@ -1,5 +1,12 @@
 export * from './config.js';
 export * from './in-memory-store.js';
+export * from './persistence.js';
+
+// PostgreSQL (Stage 8.3 — ADR-0047/0048/0049)
+export * from './pg/connection.js';
+export * from './pg/migrate.js';
+export * from './pg/tenant-context.js';
+export * from './pg/tenant-scoped.js';
 
 // Schemas
 export * from './schema/index.js';

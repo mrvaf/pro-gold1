@@ -80,7 +80,7 @@ export const toDatabaseSellerWorkspace = (workspace: SellerWorkspace): InsertSel
 });
 
 export class DrizzleSellerWorkspaceRepository implements SellerWorkspaceRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(workspace: SellerWorkspace): Promise<void> {
     const record = toDatabaseSellerWorkspace(workspace);

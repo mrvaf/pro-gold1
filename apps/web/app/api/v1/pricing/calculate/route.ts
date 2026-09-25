@@ -1,3 +1,8 @@
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getPricingContainer } from '@/lib/pricing/pricing-container';
@@ -35,13 +40,21 @@ const calculateQuoteSchema = z.object({
   ruleId: z.string().optional(),
   stoneValue: z.string().optional(),
   allowStaleMarketData: z.boolean().optional(),
-  tenantId: z.string().optional(),
   storeId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await authenticateRequest(req, 'pricing.read');
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseResult = calculateQuoteSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
@@ -69,22 +82,12 @@ export async function POST(req: NextRequest) {
       ruleId: data.ruleId,
       stoneValue: data.stoneValue,
       allowStaleMarketData: data.allowStaleMarketData,
-      tenantId: data.tenantId,
+      tenantId: auth.tenantId,
       storeId: data.storeId,
     });
 
     if (quoteResult.isErr) {
-      const err = quoteResult.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus ?? 422 }
-      );
+      return toErrorResponse(quoteResult.error);
     }
 
     return NextResponse.json(
@@ -94,16 +97,7 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred during pricing calculation.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/pricing/calculate');
   }
 }

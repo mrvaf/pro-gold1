@@ -5,8 +5,14 @@ import {
   SESSION_COOKIE_NAME,
   createClearSessionCookieConfig,
 } from '@/lib/auth/session-cookie';
+import { rejectIdentityInput } from '@/lib/api/api-errors';
 
 export async function GET(req: NextRequest) {
+  const identityViolation = rejectIdentityInput(req);
+  if (identityViolation) {
+    return identityViolation;
+  }
+
   const sessionId = req.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionId) {
     return NextResponse.json(

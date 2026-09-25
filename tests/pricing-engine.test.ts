@@ -267,7 +267,7 @@ describe('Authoritative PricingEngine', () => {
   describe('Purity Variations', () => {
     const karats = [
       { purity: GoldPurity.K24, expectedFactor: '0.9999' },
-      { purity: GoldPurity.K22, expectedFactor: '0.9166' },
+      { purity: GoldPurity.K22, expectedFactor: '0.916' },
       { purity: GoldPurity.K21, expectedFactor: '0.875' },
       { purity: GoldPurity.K18, expectedFactor: '0.75' },
       { purity: GoldPurity.K14, expectedFactor: '0.585' },

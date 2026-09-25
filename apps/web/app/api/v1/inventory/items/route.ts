@@ -1,10 +1,14 @@
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getInventoryContainer } from '@/lib/inventory/inventory-container';
 import type { InventoryStatus } from '@v-gold/core';
 
 const intakeItemSchema = z.object({
-  tenantId: z.string().min(1, 'tenantId is required'),
   storeId: z.string().optional(),
   productVariantId: z.string().min(1, 'productVariantId is required'),
   sku: z.string().min(3).max(64).optional(),
@@ -16,13 +20,21 @@ const intakeItemSchema = z.object({
   goldWeightGrams: z.union([z.string(), z.number()]),
   purityFineness: z.union([z.string(), z.number()]),
   passportRef: z.string().optional(),
-  actorId: z.string().optional(),
   notes: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await authenticateRequest(req, 'inventory.manage');
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = intakeItemSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
@@ -42,7 +54,7 @@ export async function POST(req: NextRequest) {
     const { data } = parseRes;
     const container = getInventoryContainer();
     const result = await container.inventoryService.intakeItem({
-      tenantId: data.tenantId,
+      tenantId: auth.tenantId,
       storeId: data.storeId,
       productVariantId: data.productVariantId,
       sku: data.sku,
@@ -54,22 +66,12 @@ export async function POST(req: NextRequest) {
       goldWeightGrams: data.goldWeightGrams,
       purityFineness: data.purityFineness,
       passportRef: data.passportRef,
-      actorId: data.actorId,
+      actorId: auth.actorId,
       notes: data.notes,
     });
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -82,44 +84,26 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/inventory/items');
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameter "tenantId" is required for multi-tenant isolation.',
-          },
-        },
-        { status: 400 }
-      );
+    const auth = await authenticateRequest(req, 'inventory.read');
+    if (!auth.ok) {
+      return auth.response;
     }
+
+    const { searchParams } = new URL(req.url);
 
     const status = searchParams.get('status') as InventoryStatus | null;
     const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
     const offset = searchParams.get('offset') ? Number(searchParams.get('offset')) : undefined;
 
     const container = getInventoryContainer();
-    const items = await container.inventoryService.listItems(tenantId, {
+    const items = await container.inventoryService.listItems(auth.tenantId, {
       status: status ?? undefined,
       limit,
       offset,
@@ -132,16 +116,7 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/inventory/items');
   }
 }

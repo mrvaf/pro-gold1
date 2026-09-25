@@ -1,10 +1,14 @@
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getMarketplaceContainer } from '@/lib/marketplace/marketplace-container';
 import type { SellerStatus } from '@v-gold/core';
 
 const createSellerSchema = z.object({
-  tenantId: z.string().min(1, 'tenantId is required'),
   storeId: z.string().optional(),
   displayName: z.string().min(2, 'Display name must have at least 2 characters').max(255),
   slug: z.string().min(3).max(64),
@@ -18,12 +22,20 @@ const createSellerSchema = z.object({
   contactPhone: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   initialStatus: z.enum(['DRAFT', 'ACTIVE', 'SUSPENDED', 'ARCHIVED']).optional(),
-  actorId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await authenticateRequest(req, 'marketplace.seller.manage');
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = createSellerSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
@@ -43,7 +55,7 @@ export async function POST(req: NextRequest) {
     const { data } = parseRes;
     const container = getMarketplaceContainer();
     const result = await container.marketplaceService.createSellerProfile({
-      tenantId: data.tenantId,
+      tenantId: auth.tenantId,
       storeId: data.storeId,
       displayName: data.displayName,
       slug: data.slug,
@@ -57,21 +69,11 @@ export async function POST(req: NextRequest) {
       contactPhone: data.contactPhone,
       metadata: data.metadata,
       initialStatus: data.initialStatus as SellerStatus | undefined,
-      actorId: data.actorId,
+      actorId: auth.actorId,
     });
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -81,37 +83,19 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/sellers');
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameter "tenantId" is required for multi-tenant isolation.',
-          },
-        },
-        { status: 400 }
-      );
+    const auth = await authenticateRequest(req, 'marketplace.seller.read');
+    if (!auth.ok) {
+      return auth.response;
     }
+
+    const { searchParams } = new URL(req.url);
 
     const status = searchParams.get('status') as SellerStatus | null;
     const storeId = searchParams.get('storeId') as any;
@@ -119,7 +103,7 @@ export async function GET(req: NextRequest) {
     const offset = searchParams.get('offset') ? Number(searchParams.get('offset')) : undefined;
 
     const container = getMarketplaceContainer();
-    const sellers = await container.marketplaceService.listSellerProfiles(tenantId, {
+    const sellers = await container.marketplaceService.listSellerProfiles(auth.tenantId, {
       status: status ?? undefined,
       storeId: storeId ?? undefined,
       limit,
@@ -133,16 +117,7 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/sellers');
   }
 }

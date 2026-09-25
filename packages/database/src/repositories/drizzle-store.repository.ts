@@ -35,7 +35,7 @@ export const toDatabaseStore = (store: Store): StoreRecord => {
 };
 
 export class DrizzleStoreRepository implements StoreRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async findById(tenantId: TenantId, id: StoreId): Promise<Store | null> {
     const results = await this.db

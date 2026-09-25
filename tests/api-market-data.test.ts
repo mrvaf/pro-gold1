@@ -16,7 +16,7 @@ describe('Market Data API Routes', () => {
 
   beforeEach(async () => {
     // Clear observations before each test to ensure predictable state
-    container.observationRepo.clear();
+    (container.observationRepo as unknown as { clear: () => void }).clear();
   });
 
   it('GET /api/v1/market-data/instruments returns active reference instruments', async () => {

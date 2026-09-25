@@ -1,11 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import {
   SUPPORTED_CURRENCIES,
   CURRENCY_METADATA,
   IRR_PER_TOMAN,
 } from '@v-gold/core';
+import { rejectIdentityInput } from '@/lib/api/api-errors';
 
-export async function GET() {
+export async function GET(): Promise<NextResponse>;
+export async function GET(req: NextRequest): Promise<NextResponse>;
+export async function GET(req?: NextRequest): Promise<NextResponse> {
+  if (req) {
+    const identityViolation = rejectIdentityInput(req);
+    if (identityViolation) {
+      return identityViolation;
+    }
+  }
+
   const currencies = SUPPORTED_CURRENCIES.map((code) => {
     const meta = CURRENCY_METADATA[code];
     return {

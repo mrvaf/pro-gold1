@@ -36,7 +36,7 @@ export const toDatabaseSession = (session: Session): SessionRecord => {
 };
 
 export class DrizzleSessionRepository implements SessionRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async findById(id: SessionId): Promise<Session | null> {
     const results = await this.db

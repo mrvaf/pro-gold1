@@ -42,7 +42,7 @@ export const toDatabaseMarketInstrument = (instrument: MarketInstrument): Market
 };
 
 export class DrizzleMarketInstrumentRepository implements MarketInstrumentRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async findById(id: MarketInstrumentId): Promise<MarketInstrument | null> {
     const results = await this.db

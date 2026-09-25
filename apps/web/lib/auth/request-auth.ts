@@ -2,12 +2,17 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { type Permission, type TenantMembership } from '@v-gold/core';
 import { getDefaultAuthService, type AuthenticatedIdentity } from '@/lib/auth/auth.service';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session-cookie';
+import {
+  findForbiddenIdentityInput,
+  identityFieldViolationResponse,
+} from '@/lib/api/api-errors';
 
 export interface AuthContextSuccess {
   ok: true;
   identity: AuthenticatedIdentity;
   membership: TenantMembership;
   tenantId: string;
+  actorId: string;
 }
 
 export interface AuthContextFailure {
@@ -18,19 +23,24 @@ export interface AuthContextFailure {
 export type AuthContextResult = AuthContextSuccess | AuthContextFailure;
 
 /**
- * Validates session authentication, tenant membership, and granular role permissions.
+ * Shared request authentication & authorization helper (ADR-0041).
  *
- * Security Policy:
- * - Strictly enforces HttpOnly, SameSite session cookies as established in Stage 3 ADR-0016.
- * - Non-standard headers (e.g. x-session-id or loose Bearer tokens) are strictly prohibited
- *   in production authentication paths to prevent token storage in client-accessible storage
- *   (mitigating XSS extraction and CSRF subversion).
+ * Security policy (Stage 8.1):
+ * - Tenant and actor are derived EXCLUSIVELY from the `vgold_session` HttpOnly
+ *   cookie chain: valid session -> active user -> active membership -> explicit
+ *   operation permission. Clients can never supply `tenantId`/`actorId`
+ *   (query/body) or `x-tenant-id`/`x-actor-id` (headers); doing so is rejected
+ *   with 400 VALIDATION_ERROR after authentication succeeds.
+ * - Authentication and authorization are evaluated BEFORE any client input is
+ *   processed (401/403 take precedence over 400).
+ * - Strictly enforces HttpOnly, SameSite session cookies as established in
+ *   Stage 3 ADR-0016/ADR-0014. Non-standard headers (e.g. x-session-id or loose
+ *   Bearer tokens) are strictly prohibited in production authentication paths.
  * - Enforces zero cross-tenant leakage (IDOR prevention).
  */
-export async function authenticateSellerOsRequest(
+export async function authenticateRequest(
   req: NextRequest,
-  requiredPermission?: Permission,
-  explicitTenantId?: string
+  requiredPermission?: Permission
 ): Promise<AuthContextResult> {
   // 1. Extract session ID strictly from authoritative HttpOnly session cookie
   const sessionId = req.cookies.get(SESSION_COOKIE_NAME)?.value;
@@ -51,7 +61,7 @@ export async function authenticateSellerOsRequest(
     };
   }
 
-  // 2. Authenticate session with auth service
+  // 2. Authenticate session with auth service (valid session + active user)
   const authService = getDefaultAuthService();
   const identity = await authService.authenticate(sessionId);
   if (!identity) {
@@ -70,34 +80,12 @@ export async function authenticateSellerOsRequest(
     };
   }
 
-  // 3. Determine target tenantId
-  const url = new URL(req.url);
-  const targetTenantId =
-    explicitTenantId ||
-    req.headers.get('x-tenant-id') ||
-    url.searchParams.get('tenantId') ||
-    identity.memberships[0]?.tenantId;
-
-  if (!targetTenantId) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'BAD_REQUEST',
-            message: 'Tenant context is missing. Provide x-tenant-id or tenantId parameter.',
-          },
-        },
-        { status: 400 }
-      ),
-    };
-  }
-
-  // 4. Verify tenant membership
-  const membership = identity.memberships.find(
-    (m) => m.tenantId === targetTenantId && m.isActive()
-  );
+  // 3. Resolve the active membership (tenant context) from the session only
+  const activeMemberships = identity.memberships
+    .filter((m) => m.isActive())
+    .slice()
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const membership = activeMemberships[0];
 
   if (!membership) {
     return {
@@ -107,7 +95,7 @@ export async function authenticateSellerOsRequest(
           success: false,
           error: {
             code: 'FORBIDDEN',
-            message: `Access denied. User is not an active member of tenant "${targetTenantId}".`,
+            message: 'Access denied. The user has no active tenant membership.',
           },
         },
         { status: 403 }
@@ -115,7 +103,7 @@ export async function authenticateSellerOsRequest(
     };
   }
 
-  // 5. Verify granular permission if specified
+  // 4. Verify granular permission if specified
   if (requiredPermission && !membership.can(requiredPermission)) {
     return {
       ok: false,
@@ -132,10 +120,18 @@ export async function authenticateSellerOsRequest(
     };
   }
 
+  // 5. Reject any client-supplied identity input (query params / headers).
+  //    Body fields are checked by the route handlers after JSON parsing.
+  const violation = findForbiddenIdentityInput(req);
+  if (violation) {
+    return { ok: false, response: identityFieldViolationResponse(violation) };
+  }
+
   return {
     ok: true,
     identity,
     membership,
-    tenantId: targetTenantId,
+    tenantId: membership.tenantId,
+    actorId: identity.user.id,
   };
 }

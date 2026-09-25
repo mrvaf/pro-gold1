@@ -138,7 +138,7 @@ export const toDatabasePricingResult = (result: PricingResult): InsertPricingRes
 });
 
 export class DrizzlePricingResultRepository implements PricingResultRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(result: PricingResult): Promise<void> {
     const record = toDatabasePricingResult(result);

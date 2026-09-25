@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMarketplaceContainer } from '@/lib/marketplace/marketplace-container';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   props: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const identityViolation = rejectIdentityInput(req);
+    if (identityViolation) {
+      return identityViolation;
+    }
+
     const { slug } = await props.params;
 
     if (!slug || slug.trim().length === 0) {
@@ -25,17 +35,7 @@ export async function GET(
     const result = await container.marketplaceService.getPublicSellerBySlug(slug);
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -45,16 +45,7 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:marketplace/sellers/[slug]');
   }
 }

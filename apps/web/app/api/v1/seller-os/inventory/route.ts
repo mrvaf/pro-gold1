@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createEntityId, type TenantId, type InventoryStatus } from '@v-gold/core';
 import { getSellerOsContainer } from '@/lib/seller-os/seller-os-container';
-import { authenticateSellerOsRequest } from '@/lib/seller-os/seller-os-auth';
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.inventory.read');
+    const auth = await authenticateRequest(req, 'seller.inventory.read');
     if (!auth.ok) {
       return auth.response;
     }
@@ -46,16 +51,7 @@ export async function GET(req: NextRequest) {
     );
 
     if (result.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: result.error.code,
-            message: result.error.message,
-          },
-        },
-        { status: result.error.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -82,16 +78,7 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

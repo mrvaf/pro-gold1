@@ -30,20 +30,20 @@ No stage begins without an explicit prompt from the user following verification 
 
 ---
 
-## 3. Technology Stack (Stage 4.1 Implemented)
+## 3. Technology Stack
 
 * **Runtime:** Node.js 20+ (Target: Node.js 22 LTS compatibility)
-* **Language:** TypeScript 5.7.x (Strict mode enabled)
-* **Framework:** Next.js 15.5.x (App Router), React 19
+* **Language:** TypeScript 5.9.x (Strict mode enabled)
+* **Framework:** Next.js 15.5.x (App Router), React 19.3.x
 * **Monorepo Engine:** npm Workspaces
 * **Persistence:** PostgreSQL DDL Migrations & Drizzle ORM 0.39.x (Database infrastructure decoupled from domain)
 * **Financial Precision & Semantics:** Three-tier precision architecture, explicit rounding modes (`ROUND_HALF_UP`, `ROUND_HALF_EVEN`), directional FX rates, deterministic Toman/Rial 1:10 conversion (`CurrencyConverter`)
 * **Market Data:** Ingestion, validation, normalization, and freshness evaluation (`packages/core/src/domain/market-data/`, `packages/database/src/providers/`)
 * **Password Security:** Scrypt KDF with 16-byte cryptographically secure salt & constant-time verification
 * **Session Security:** Server-side sessions with HttpOnly, SameSite, Secure cookies (Zero client-side token storage)
-* **Testing:** Vitest 3.x (65 test suites, 385 passing tests)
-* **Validation:** Zod
-* **Financial & Mass Precision:** Decimal.js 10.4.x
+* **Testing:** Vitest 3.2.x (65 test suites, 385 passing tests)
+* **Validation:** Zod 3.x
+* **Financial & Mass Precision:** Decimal.js 10.6.x
 * **Internationalization:** Persian (`fa-IR`, RTL default) & English (`en-US`, LTR)
 
 ---

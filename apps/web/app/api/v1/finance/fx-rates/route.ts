@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { parseCurrencyCode } from '@v-gold/core';
 import { getFinanceContainer } from '@/lib/finance/finance-container';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 const querySchema = z.object({
   base: z.string().min(3).max(5),
@@ -10,47 +15,28 @@ const querySchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    const identityViolation = rejectIdentityInput(req);
+    if (identityViolation) {
+      return identityViolation;
+    }
+
     const { searchParams } = new URL(req.url);
     const rawBase = searchParams.get('base');
     const rawQuote = searchParams.get('quote');
 
     const parseResult = querySchema.safeParse({ base: rawBase, quote: rawQuote });
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameters "base" and "quote" are required.',
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Query parameters "base" and "quote" are required.');
     }
 
     const baseResult = parseCurrencyCode(parseResult.data.base);
     if (baseResult.isErr) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'INVALID_BASE_CURRENCY',
-            message: baseResult.error.message,
-          },
-        },
-        { status: 400 }
-      );
+      return toErrorResponse(baseResult.error, 'api:finance/fx-rates', 'INVALID_BASE_CURRENCY');
     }
 
     const quoteResult = parseCurrencyCode(parseResult.data.quote);
     if (quoteResult.isErr) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'INVALID_QUOTE_CURRENCY',
-            message: quoteResult.error.message,
-          },
-        },
-        { status: 400 }
-      );
+      return toErrorResponse(quoteResult.error, 'api:finance/fx-rates', 'INVALID_QUOTE_CURRENCY');
     }
 
     const container = getFinanceContainer();
@@ -71,15 +57,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       fxRate: rate.toDto(),
     });
-  } catch {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred while querying FX rates.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:finance/fx-rates');
   }
 }

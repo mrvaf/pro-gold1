@@ -1,6 +1,7 @@
 // Common primitives
 export * from './common/result.js';
 export * from './common/id.js';
+export * from './common/id-generator.js';
 export * from './common/entity.js';
 export * from './common/value-object.js';
 export * from './common/errors.js';
@@ -14,6 +15,7 @@ export * from './ports/user.repository.port.js';
 export * from './ports/tenant-membership.repository.port.js';
 export * from './ports/session.repository.port.js';
 export * from './ports/password-hasher.port.js';
+export * from './ports/id-generator.port.js';
 export * from './ports/market-data-provider.port.js';
 export * from './ports/market-observation.repository.port.js';
 export * from './ports/market-instrument.repository.port.js';

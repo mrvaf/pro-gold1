@@ -1,17 +1,59 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
+import {
+  Tenant,
+  Store,
+  User,
+  Email,
+  PasswordHash,
+  TenantMembership,
+  Session,
+  createEntityId,
+  type TenantId,
+  type StoreId,
+} from '@v-gold/core';
+import { getDefaultAuthService } from '../apps/web/lib/auth/auth.service.js';
+import { getCatalogContainer } from '../apps/web/lib/catalog/catalog-container.js';
+import { SESSION_COOKIE_NAME } from '../apps/web/lib/auth/session-cookie.js';
 import { NextRequest } from 'next/server';
 import { POST } from '../apps/web/app/api/v1/pricing/calculate/route.js';
 import { getMarketDataContainer } from '../apps/web/lib/market-data/market-data-container.js';
 import {
   MarketObservation,
   MarketPrice,
-  createEntityId,
   type MarketObservationId,
   type MarketInstrumentId,
   type MarketDataSourceId,
 } from '@v-gold/core';
 
 describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
+  let sessionCookie: string;
+
+  beforeAll(async () => {
+    const authService = getDefaultAuthService();
+    const catalogContainer = getCatalogContainer();
+
+    const tId = createEntityId<TenantId>('tenant_api_pricing_test');
+    const tenant = Tenant.create({ id: tId, name: 'API Pricing Test Tenant', slug: 'api-pricing-test' }).unwrap();
+    await authService.tenantRepository.save(tenant);
+
+    const sId = createEntityId<StoreId>('store_api_pricing_test');
+    const store = Store.create({ id: sId, tenantId: tId, name: 'API Pricing Test Store', code: 'PRC01' }).unwrap();
+    await catalogContainer.storeRepo.save(tId, store);
+
+    const owner = User.create({
+      email: Email.create('owner@api-pricing-test.vgold').unwrap(),
+      passwordHash: PasswordHash.create('$2b$10$abcdefghijklmnopqrstuvwxyz123456').unwrap(),
+      displayName: 'API Pricing Owner',
+    }).unwrap();
+    await authService.userRepository.save(owner);
+
+    const membership = TenantMembership.create({ tenantId: tId, userId: owner.id, role: 'OWNER' }).unwrap();
+    await authService.membershipRepository.save(membership);
+
+    const session = Session.create({ id: 'a1'.repeat(32), userId: owner.id }).unwrap();
+    await authService.sessionRepository.save(session);
+    sessionCookie = `${SESSION_COOKIE_NAME}=${session.id}`;
+  });
   const seedObservation = async (symbol: string, amount: string, observedAt: Date = new Date()) => {
     const marketData = getMarketDataContainer();
     const inst = await marketData.instrumentRepo.findBySymbol(symbol);
@@ -48,7 +90,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
       method: 'POST',
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
     });
 
     const res = await POST(req);
@@ -79,7 +121,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
       method: 'POST',
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
     });
 
     const res = await POST(req);
@@ -104,7 +146,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
       method: 'POST',
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
     });
 
     const res = await POST(req);
@@ -126,7 +168,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
       method: 'POST',
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
     });
 
     const res = await POST(req);
@@ -150,7 +192,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
       method: 'POST',
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
     });
 
     const res = await POST(req);
@@ -178,7 +220,7 @@ describe('Pricing Web API (POST /api/v1/pricing/calculate)', () => {
     const req = new NextRequest('http://localhost:3000/api/v1/pricing/calculate', {
       method: 'POST',
       body: JSON.stringify(body),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
     });
 
     const res = await POST(req);

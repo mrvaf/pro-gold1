@@ -5,17 +5,21 @@ import {
   MarketDataIngestionService,
   MarketDataQueryService,
 } from '@v-gold/core';
+import type {
+  MarketDataSourceRepositoryPort,
+  MarketInstrumentRepositoryPort,
+  MarketObservationRepositoryPort,
+} from '@v-gold/core';
 import {
-  InMemoryMarketDataSourceRepository,
-  InMemoryMarketInstrumentRepository,
-  InMemoryMarketObservationRepository,
+  createPersistence,
+  type Persistence,
   UnavailableMarketDataProvider,
 } from '@v-gold/database';
 
 class MarketDataContainer {
-  readonly sourceRepo = new InMemoryMarketDataSourceRepository();
-  readonly instrumentRepo = new InMemoryMarketInstrumentRepository();
-  readonly observationRepo = new InMemoryMarketObservationRepository();
+  readonly sourceRepo: MarketDataSourceRepositoryPort;
+  readonly instrumentRepo: MarketInstrumentRepositoryPort;
+  readonly observationRepo: MarketObservationRepositoryPort;
   readonly provider = new UnavailableMarketDataProvider();
   readonly freshnessPolicy = new MarketDataFreshnessPolicy();
   readonly ingestionService: MarketDataIngestionService;
@@ -23,7 +27,10 @@ class MarketDataContainer {
 
   private isInitialized = false;
 
-  constructor() {
+  constructor(persistence: Persistence = createPersistence()) {
+    this.sourceRepo = persistence.marketDataSourceRepository;
+    this.instrumentRepo = persistence.marketInstrumentRepository;
+    this.observationRepo = persistence.marketObservationRepository;
     this.ingestionService = new MarketDataIngestionService(
       this.observationRepo,
       this.instrumentRepo,

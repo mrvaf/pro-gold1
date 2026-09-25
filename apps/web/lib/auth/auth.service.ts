@@ -22,13 +22,7 @@ import {
   type Result,
   ActorReference,
 } from '@v-gold/core';
-import {
-  InMemoryUserRepository,
-  InMemoryTenantRepository,
-  InMemoryTenantMembershipRepository,
-  InMemorySessionRepository,
-  ScryptPasswordHasher,
-} from '@v-gold/database';
+import { createPersistence, ScryptPasswordHasher } from '@v-gold/database';
 
 export interface RegisterInput {
   email: string;
@@ -182,6 +176,14 @@ export class AuthService {
       return err(new ForbiddenError('User account is currently suspended.'));
     }
 
+    // Stage 8.2 (ADR-0044): transparently upgrade legacy hash parameters
+    // (e.g. scrypt N=2^14) to the current policy after successful login.
+    if (this.passwordHasher.needsRehash?.(user.passwordHash.value)) {
+      const upgradedHash = await this.passwordHasher.hash(input.password);
+      user.changePassword(PasswordHash.create(upgradedHash).unwrap());
+      await this.userRepo.save(user);
+    }
+
     // Create fresh session (resisting session fixation)
     const randomToken = crypto.randomBytes(32).toString('hex');
     const sessionResult = Session.create({
@@ -263,17 +265,14 @@ let defaultAuthServiceInstance: AuthService | null = null;
 
 export const getDefaultAuthService = (): AuthService => {
   if (!defaultAuthServiceInstance) {
-    const userRepo = new InMemoryUserRepository();
-    const tenantRepo = new InMemoryTenantRepository();
-    const membershipRepo = new InMemoryTenantMembershipRepository();
-    const sessionRepo = new InMemorySessionRepository();
+    const persistence = createPersistence();
     const passwordHasher = new ScryptPasswordHasher();
 
     defaultAuthServiceInstance = new AuthService(
-      userRepo,
-      tenantRepo,
-      membershipRepo,
-      sessionRepo,
+      persistence.userRepository,
+      persistence.tenantRepository,
+      persistence.tenantMembershipRepository,
+      persistence.sessionRepository,
       passwordHasher
     );
   }

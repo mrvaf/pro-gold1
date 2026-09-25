@@ -1,11 +1,14 @@
-import { FxRate } from '@v-gold/core';
-import { InMemoryFxRateRepository } from '@v-gold/database';
+import { FxRate, type FxRateRepositoryPort } from '@v-gold/core';
+import { createPersistence, type Persistence, type PersistenceMode } from '@v-gold/database';
 
 class FinanceContainer {
-  readonly fxRateRepo = new InMemoryFxRateRepository();
+  readonly fxRateRepo: FxRateRepositoryPort;
+  private readonly persistenceMode: PersistenceMode;
   private isInitialized = false;
 
-  constructor() {
+  constructor(persistence: Persistence = createPersistence()) {
+    this.fxRateRepo = persistence.fxRateRepository;
+    this.persistenceMode = persistence.mode;
     this.initializeReferenceRates();
   }
 
@@ -27,7 +30,15 @@ class FinanceContainer {
         observedAt: new Date(),
       });
       if (res.isOk) {
-        this.fxRateRepo.save(res.value);
+        if (this.persistenceMode === 'postgres') {
+          // Stage 8.3 (ADR-0047): idempotent bootstrap on durable storage —
+          // reference pairs are seeded only when the repository has no rate yet.
+          void this.fxRateRepo
+            .findLatest(res.value.baseCurrency, res.value.quoteCurrency)
+            .then((existing) => (existing ? undefined : this.fxRateRepo.save(res.value)));
+        } else {
+          this.fxRateRepo.save(res.value);
+        }
       }
     }
 

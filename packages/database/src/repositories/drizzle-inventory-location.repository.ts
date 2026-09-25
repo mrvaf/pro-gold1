@@ -50,7 +50,7 @@ export const toDatabaseInventoryLocation = (
 });
 
 export class DrizzleInventoryLocationRepository implements InventoryLocationRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(location: InventoryLocation): Promise<void> {
     const record = toDatabaseInventoryLocation(location);

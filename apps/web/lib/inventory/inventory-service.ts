@@ -493,4 +493,12 @@ export class InventoryService {
     const tenId = createEntityId<TenantId>(tenantId);
     return this.movementRepo.listByItemId(itmId, tenId);
   }
+
+  async listMovementsByTenant(
+    tenantId: string,
+    filter?: InventoryMovementListFilter
+  ): Promise<InventoryMovement[]> {
+    const tenId = createEntityId<TenantId>(tenantId);
+    return this.movementRepo.listByTenant(tenId, filter);
+  }
 }

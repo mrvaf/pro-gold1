@@ -33,7 +33,7 @@ export const toDatabaseMarketDataSource = (source: MarketDataSource): MarketData
 };
 
 export class DrizzleMarketDataSourceRepository implements MarketDataSourceRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async findById(id: MarketDataSourceId): Promise<MarketDataSource | null> {
     const results = await this.db

@@ -40,7 +40,7 @@ export const toDatabaseUser = (user: User): UserRecord => {
 };
 
 export class DrizzleUserRepository implements UserRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async findById(id: UserId): Promise<User | null> {
     const results = await this.db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);

@@ -1,5 +1,6 @@
 import { Entity } from '../../common/entity.js';
 import { createEntityId, type EntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import { ValidationError } from '../../common/errors.js';
 import { err, ok, type Result } from '../../common/result.js';
 import { AuditMetadata } from '../audit/audit-metadata.js';
@@ -143,7 +144,7 @@ export class InventoryLocation extends Entity<InventoryLocationId> {
     }
 
     const id = createEntityId<InventoryLocationId>(
-      props.id ?? `loc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+      props.id ?? generateId('loc')
     );
     const audit = AuditMetadata.create(props.actor);
 

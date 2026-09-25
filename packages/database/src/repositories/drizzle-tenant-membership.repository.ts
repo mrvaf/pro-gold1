@@ -37,7 +37,7 @@ export const toDatabaseMembership = (membership: TenantMembership): TenantMember
 };
 
 export class DrizzleTenantMembershipRepository implements TenantMembershipRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async findById(id: MembershipId): Promise<TenantMembership | null> {
     const results = await this.db

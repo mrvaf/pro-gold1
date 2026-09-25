@@ -66,7 +66,7 @@ export const toDatabaseInventoryMovement = (
 });
 
 export class DrizzleInventoryMovementRepository implements InventoryMovementRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   /**
    * Append-only record insertion.

@@ -21,7 +21,7 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
   - Vitest 3.x test harness and scripts (`npm test`, `npm run typecheck`, `npm run build`).
   - Architecture boundary linting and layer validation (AST scan asserting zero leakage into domain).
   - Domain primitives (`Result<T,E>`, `Entity`, `ValueObject`, `EntityId`, `DomainError`, Ports).
-  - Next.js 15 App Router & React 19 web foundation with bilingual layout and `/api/health` endpoint.
+  - Next.js 15 App Router & React 19 web foundation with Persian RTL layout (lang=fa, dir=rtl); bilingual layout not yet implemented; includes `/api/health` endpoint.
 * **Completion Gate:** 16 passed / 0 skipped / 0 failed, 0 type errors, clean Next.js production build.
 
 ---
@@ -69,19 +69,19 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ### Stage 4.1 — Financial Precision & Currency Semantics
 * **Status:** **COMPLETE**
 * **Focus:**
-  - Three-tier precision architecture: Calculation (arbitrary Decimal) vs Storage (`NUMERIC(24, 8)`) vs Presentation (currency minor units).
+  - Three-tier precision architecture: Calculation (arbitrary Decimal) vs Storage (per-type `NUMERIC` scale boundaries — see the Precision Matrix in `ARCHITECTURE.md` §5.2) vs Presentation (currency minor units).
   - Explicit rounding policy: `ROUND_HALF_UP`, `ROUND_HALF_EVEN`, `ROUND_UP`, `ROUND_DOWN` with zero premature rounding on intermediate calculation chains.
   - Enhanced currency semantics (`IRR`, `TOMAN`, `USD`, `EUR`) and statutory Toman/Rial deterministic ratio (`1 TOMAN = 10 IRR`).
   - Directional foreign exchange rate modeling (`FxRate`) with arbitrary-precision reciprocal inversion.
   - Authoritative currency conversion (`CurrencyConverter.convert()`, `tomanToIrr()`, `irrToToman()`).
   - PostgreSQL schema & migration `0004_financial_precision_currency_semantics.sql` (`fx_rates` table).
   - API endpoints: `/api/v1/finance/currencies`, `/api/v1/finance/fx-rates`.
-* **Completion Gate:** 175 passed / 0 skipped / 0 failed across 39 test files, 0 typecheck errors, clean Next.js production build.
+* **Completion Gate:** 187 passed / 0 skipped / 0 failed across 40 test files (the 175 / 39 figures were the pre-audit count), 0 typecheck errors, clean Next.js production build.
 
 ---
 
 ### Stage 5 — Authoritative Pricing Engine
-* **Status:** **PENDING** (Awaiting explicit user command)
+* **Status:** **COMPLETE**
 * **Focus:**
   - Pure domain pricing service calculating:
     - Base Gold Value = $Weight \times \frac{Purity}{750} \times SpotPrice$
@@ -135,6 +135,39 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
   - Listing lifecycle management orchestrated via Stage 7 `SellerListing`.
   - Multi-tenant isolation and IDOR mitigation with composite foreign keys in PostgreSQL.
 * **Completion Criteria:** 385 tests passing across 65 test files; zero regressions; strict tenant isolation; sequential migration `0011_seller_os_foundation.sql`.
+
+---
+
+### Stage 8.1 — API Authentication & Error-Handling Hardening
+* **Status:** **COMPLETE & FINALIZED**
+* **Focus:**
+  - Tenant/actor identity derived exclusively from the HttpOnly `vgold_session` session cookie via shared `authenticateRequest` (generalized from `authenticateSellerOsRequest`).
+  - Client identity input (`tenantId`/`actorId` in query/body, `x-tenant-id`/`x-actor-id` headers) rejected with `400 VALIDATION_ERROR` on every route.
+  - Explicit per-operation permissions (`catalog.read/manage`, `inventory.read/manage`, `pricing.read`) with role mapping recorded in ADR-0041.
+  - `/api/v1/inventory/movements` reaches data only through `InventoryService` with Zod-validated pagination.
+  - Shared error mapper (`toErrorResponse`): domain errors keep their contract; unknown errors → generic `INTERNAL_ERROR` + secret/PII-free server logs (ADR-0042).
+* **Completion Criteria:** 525 tests passing (385 baseline preserved without assertion changes + 140 negative-matrix tests: 20 route methods × 7 scenarios); live `next start` verification: all 12 formerly-open routes return 401 without a cookie.
+
+---
+
+### Stage 8.2 — ID/scrypt/Purity Hardening
+* **Status:** **COMPLETE & FINALIZED**
+* **Focus:**
+  - UUIDv7 entity identifiers from a single `IdGenerator` port (RFC 9562; CSPRNG via `globalThis.crypto.getRandomValues`), injectable via `setDefaultIdGenerator`; all 12 `Math.random`/`Date.now` fallback sites (plus the mock provider's `externalId`) now delegate to `generateId` (ADR-0043).
+  - scrypt password hashing upgraded to OWASP parameters `N=2^17, r=8, p=1` with computed `maxmem`, environment overrides (`VGOLD_SCRYPT_N/R/P`) behind a safe floor (`N ≥ 2^14`), parameters read from the stored hash (legacy N=16384 hashes keep verifying), and transparent re-hash after successful login (ADR-0044).
+  - 22-karat fineness canonicalized from 916.6 to **916** (ISO 9202 millesimal mark, aligned with the 585/14K style); documented pricing effect: ≈ −0.0655 % gold content (ADR-0045).
+  - PostgreSQL decision recorded (ADR-0046): real connection, safe migration, and RLS deferred to Stage 8.3, before Stage 9.
+* **Completion Criteria:** 537 tests passing (525 baseline preserved + 12 new: IdGenerator suite, transparent hash-upgrade suite, scrypt legacy-compat/env-floor tests, 22K→916 purity test); typecheck PASS; build PASS.
+
+---
+
+### Stage 8.3 — Real Data Infrastructure (actual PostgreSQL, safe migration, RLS)
+* **Status:** **COMPLETE & FINALIZED**
+* **Focus:**
+  - First live database driver in the project's history: `pg` + Drizzle over `node-postgres`; `createPersistence()` composition factory serves all 21 ports with explicit `DATABASE_ENABLED=true` opt-in (default remains in-memory) across all eight composition roots (ADR-0047).
+  - Sequential SQL migration runner: 0001–0012 applied to a real cluster, each file atomic with its `schema_migrations` ledger entry, idempotent re-runs, loud out-of-order refusal (ADR-0048).
+  - Row-Level Security enabled + forced on all 12 tenant-scoped tables; conditional tenant policy keyed on the transaction-local `app.tenant_id` GUC; tenant-context decorators bind every repository call to its tenant while the deliberate un-scoped branch preserves cross-tenant probes, public discovery, and login flows (ADR-0049).
+* **Completion Criteria:** 550 tests passing against a live embedded PostgreSQL cluster (537 baseline preserved + 13 new: migration ledger/idempotency, RLS catalog assertions, pg+Drizzle round-trips, cross-tenant probe contract, composition factory modes, and the six-cell RLS enforcement matrix as restricted role `vgold_app`); typecheck PASS; build PASS.
 
 ---
 

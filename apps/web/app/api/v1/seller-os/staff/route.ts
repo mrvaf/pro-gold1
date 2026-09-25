@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSellerOsContainer } from '@/lib/seller-os/seller-os-container';
-import { authenticateSellerOsRequest } from '@/lib/seller-os/seller-os-auth';
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import type { Role } from '@v-gold/core';
 
 const addStaffSchema = z.object({
@@ -11,7 +16,7 @@ const addStaffSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.staff.read');
+    const auth = await authenticateRequest(req, 'seller.staff.read');
     if (!auth.ok) {
       return auth.response;
     }
@@ -20,16 +25,7 @@ export async function GET(req: NextRequest) {
     const result = await container.sellerOsService.listStaff(auth.tenantId);
 
     if (result.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: result.error.code,
-            message: result.error.message,
-          },
-        },
-        { status: result.error.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -39,42 +35,27 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.staff.manage');
+    const auth = await authenticateRequest(req, 'seller.staff.manage');
     if (!auth.ok) {
       return auth.response;
     }
 
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = addStaffSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid request payload schema.',
-            details: parseRes.error.format(),
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Invalid request payload schema.', parseRes.error.format());
     }
 
     const { data } = parseRes;
@@ -88,16 +69,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (result.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: result.error.code,
-            message: result.error.message,
-          },
-        },
-        { status: result.error.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     const mem = result.value;
@@ -115,16 +87,7 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

@@ -9,6 +9,7 @@ import { MarketPrice } from './market-price.js';
 import type { MarketInstrument } from './market-instrument.js';
 import type { MarketDataSourceId } from './market-data-source.js';
 import { createEntityId } from '../../common/id.js';
+import { generateId } from '../../common/id-generator.js';
 import crypto from 'node:crypto';
 
 export type IngestionErrorCode =
@@ -191,7 +192,7 @@ export class MarketDataIngestionService {
 
     // 6. Construct MarketObservation
     const observationId = createEntityId<MarketObservationId>(
-      `obs_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`
+      generateId('obs')
     );
     const observationResult = MarketObservation.create({
       id: observationId,
