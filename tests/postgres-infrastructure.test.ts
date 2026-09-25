@@ -121,9 +121,15 @@ beforeAll(async () => {
 }, 180_000);
 
 afterAll(async () => {
-  await appPool?.end();
-  await adminPool?.end();
-  await embedded?.stop();
+  try {
+    await appPool?.end();
+  } catch {}
+  try {
+    await adminPool?.end();
+  } catch {}
+  try {
+    await embedded?.stop();
+  } catch {}
 });
 
 describe('Stage 8.3 — migrations (ADR-0048)', () => {

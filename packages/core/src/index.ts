@@ -213,6 +213,8 @@ export * from './domain/market-data/cached-market-price-query.service.js';
 export * from './common/security-headers.js';
 export * from './common/rate-limiter.js';
 
+// Production Readiness & Operations (Stage 24)
+export * from './common/structured-logger.js';
 
 
 

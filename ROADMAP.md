@@ -348,11 +348,11 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 24 — Production Readiness & Operations
-* **Status:** **PENDING**
+* **Status:** **COMPLETE**
 * **Focus:**
-  - Health check and readiness probes (`/health/live`, `/health/ready`).
-  - Graceful shutdown, telemetry, structured JSON logging, and database backup scripts.
-* **Completion Criteria:** Containerized build verification; health checks return appropriate HTTP status codes.
+  - Health check and readiness probes (`/api/health/live`, `/api/health/ready`).
+  - Graceful shutdown, telemetry, structured JSON logging (`StructuredLogger`), and database backup script (`scripts/backup.sh`).
+* **Completion Criteria:** 664 tests passing; containerized build verification; health checks return appropriate HTTP status codes; ADR-0065 recorded.
 
 ---
 

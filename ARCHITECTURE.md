@@ -780,6 +780,20 @@ Stage 23 enforces defense-in-depth protections against OWASP Top 10 web vulnerab
 2. **Defensive Rate Limiting**:
    - `InMemoryRateLimiter`: Sliding/fixed-window memory-safe rate limiter with remaining counter and reset timestamps for sensitive authentication and public discovery endpoints.
 
+## ADR-0065: Production Readiness, Health Probes & Operations
+
+### Context
+Stage 24 establishes operational stability, telemetry, health observability, container readiness probes, and database backup routines for production deployment.
+
+### Decision
+1. **Container Health & Readiness Probes**:
+   - `GET /api/health/live`: Lightweight process liveness probe confirming event loop viability and server process uptime.
+   - `GET /api/health/ready`: Readiness probe reporting backing database storage configuration status, heap memory, and operational readiness.
+2. **Structured JSON Telemetry**:
+   - `StructuredLogger`: Emits structured JSON logs containing standardized timestamps, log levels, tenant contexts, trace IDs, and sanitized execution details.
+3. **Automated Operational Maintenance**:
+   - `packages/database/scripts/backup.sh`: PostgreSQL custom-format backup script for reliable zero-downtime snapshots.
+
 
 
 
