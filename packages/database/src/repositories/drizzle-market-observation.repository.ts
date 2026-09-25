@@ -62,7 +62,7 @@ export const toDatabaseMarketObservation = (
 };
 
 export class DrizzleMarketObservationRepository implements MarketObservationRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(observation: MarketObservation): Promise<void> {
     const record = toDatabaseMarketObservation(observation);

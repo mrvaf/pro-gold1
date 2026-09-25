@@ -91,7 +91,7 @@ export const toDatabaseSellerListing = (listing: SellerListing): InsertSellerLis
 });
 
 export class DrizzleSellerListingRepository implements SellerListingRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(listing: SellerListing): Promise<void> {
     const record = toDatabaseSellerListing(listing);

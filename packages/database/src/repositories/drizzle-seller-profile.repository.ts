@@ -107,7 +107,7 @@ export const toDatabaseSellerProfile = (seller: SellerProfile): InsertSellerProf
 });
 
 export class DrizzleSellerProfileRepository implements SellerProfileRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(seller: SellerProfile): Promise<void> {
     const record = toDatabaseSellerProfile(seller);

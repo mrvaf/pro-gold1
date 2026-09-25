@@ -79,7 +79,7 @@ export const toDatabasePricingRule = (rule: PricingRule): InsertPricingRuleRecor
 });
 
 export class DrizzlePricingRuleRepository implements PricingRuleRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(rule: PricingRule): Promise<void> {
     const record = toDatabasePricingRule(rule);

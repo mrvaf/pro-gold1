@@ -34,7 +34,7 @@ export const toDatabaseFxRate = (rate: FxRate, id?: string): Omit<FxRateRecord, 
 });
 
 export class DrizzleFxRateRepository implements FxRateRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(rate: FxRate): Promise<void> {
     const id = generateId('fx');

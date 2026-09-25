@@ -4,23 +4,26 @@ import {
   createEntityId,
   type PricingRuleId,
 } from '@v-gold/core';
-import {
-  InMemoryPricingRuleRepository,
-  InMemoryPricingResultRepository,
-} from '@v-gold/database';
+import type {
+  PricingResultRepositoryPort,
+  PricingRuleRepositoryPort,
+} from '@v-gold/core';
+import { createPersistence, type Persistence } from '@v-gold/database';
 import { getMarketDataContainer } from '@/lib/market-data/market-data-container';
 import { getFinanceContainer } from '@/lib/finance/finance-container';
 import { PricingService } from './pricing-service';
 
 class PricingContainer {
-  readonly ruleRepo = new InMemoryPricingRuleRepository();
-  readonly resultRepo = new InMemoryPricingResultRepository();
+  readonly ruleRepo: PricingRuleRepositoryPort;
+  readonly resultRepo: PricingResultRepositoryPort;
   readonly freshnessPolicy = new MarketDataFreshnessPolicy();
   readonly pricingService: PricingService;
 
   private isInitialized = false;
 
-  constructor() {
+  constructor(persistence: Persistence = createPersistence()) {
+    this.ruleRepo = persistence.pricingRuleRepository;
+    this.resultRepo = persistence.pricingResultRepository;
     const marketData = getMarketDataContainer();
     const finance = getFinanceContainer();
 

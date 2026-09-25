@@ -57,7 +57,7 @@ export const toDatabaseProduct = (product: Product): InsertProductRecord => ({
 });
 
 export class DrizzleProductRepository implements ProductRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(product: Product): Promise<void> {
     const record = toDatabaseProduct(product);

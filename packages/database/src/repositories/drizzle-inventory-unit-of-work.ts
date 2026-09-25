@@ -14,7 +14,7 @@ import { inventoryMovementsTable } from '../schema/inventory-movements.js';
  * Wraps item persistence and movement recording in a genuine PostgreSQL database transaction.
  */
 export class DrizzleInventoryUnitOfWork implements InventoryUnitOfWorkPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async saveItemWithMovement(item: InventoryItem, movement: InventoryMovement): Promise<void> {
     const itemRecord = toDatabaseInventoryItem(item);

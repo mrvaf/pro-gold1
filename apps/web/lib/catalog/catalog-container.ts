@@ -1,17 +1,21 @@
-import {
-  InMemoryProductRepository,
-  InMemoryProductVariantRepository,
-  InMemoryStoreRepository,
-} from '@v-gold/database';
+import type {
+  ProductRepositoryPort,
+  ProductVariantRepositoryPort,
+  StoreRepositoryPort,
+} from '@v-gold/core';
+import { createPersistence, type Persistence } from '@v-gold/database';
 import { CatalogService } from './catalog-service';
 
 class CatalogContainer {
-  readonly productRepo = new InMemoryProductRepository();
-  readonly variantRepo = new InMemoryProductVariantRepository();
-  readonly storeRepo = new InMemoryStoreRepository();
+  readonly productRepo: ProductRepositoryPort;
+  readonly variantRepo: ProductVariantRepositoryPort;
+  readonly storeRepo: StoreRepositoryPort;
   readonly catalogService: CatalogService;
 
-  constructor() {
+  constructor(persistence: Persistence = createPersistence()) {
+    this.productRepo = persistence.productRepository;
+    this.variantRepo = persistence.productVariantRepository;
+    this.storeRepo = persistence.storeRepository;
     this.catalogService = new CatalogService(this.productRepo, this.variantRepo, this.storeRepo);
   }
 }

@@ -1,4 +1,5 @@
-import { InMemorySellerWorkspaceRepository } from '@v-gold/database';
+import type { SellerWorkspaceRepositoryPort } from '@v-gold/core';
+import { createPersistence, type Persistence } from '@v-gold/database';
 import { getDefaultAuthService } from '@/lib/auth/auth.service';
 import { getCatalogContainer } from '@/lib/catalog/catalog-container';
 import { getInventoryContainer } from '@/lib/inventory/inventory-container';
@@ -6,10 +7,11 @@ import { getMarketplaceContainer } from '@/lib/marketplace/marketplace-container
 import { SellerOsService } from './seller-os.service';
 
 export class SellerOsContainer {
-  readonly workspaceRepo = new InMemorySellerWorkspaceRepository();
+  readonly workspaceRepo: SellerWorkspaceRepositoryPort;
   readonly sellerOsService: SellerOsService;
 
-  constructor() {
+  constructor(persistence: Persistence = createPersistence()) {
+    this.workspaceRepo = persistence.sellerWorkspaceRepository;
     const authService = getDefaultAuthService();
     const catalogContainer = getCatalogContainer();
     const inventoryContainer = getInventoryContainer();

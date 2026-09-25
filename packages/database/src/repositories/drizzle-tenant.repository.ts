@@ -32,7 +32,7 @@ export const toDatabaseTenant = (tenant: Tenant): TenantRecord => {
 };
 
 export class DrizzleTenantRepository implements TenantRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async findById(id: TenantId): Promise<Tenant | null> {
     const results = await this.db

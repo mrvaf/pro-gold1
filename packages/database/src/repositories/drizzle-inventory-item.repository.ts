@@ -86,7 +86,7 @@ export const toDatabaseInventoryItem = (item: InventoryItem): InsertInventoryIte
 });
 
 export class DrizzleInventoryItemRepository implements InventoryItemRepositoryPort {
-  constructor(private readonly db: PgDatabase<any>) {}
+  constructor(private readonly db: PgDatabase<any, any, any>) {}
 
   async save(item: InventoryItem): Promise<void> {
     const record = toDatabaseInventoryItem(item);

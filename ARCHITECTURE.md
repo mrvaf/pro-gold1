@@ -459,6 +459,30 @@ PricingBreakdown
 * **Decision:** The production persistence engine is **PostgreSQL** (matching the existing Drizzle schema definitions and the sequential SQL migrations). The real connection — driver installation, a safe additive (non-destructive) migration path against a live database, and Row-Level Security — is scheduled for **Stage 8.3 (next session)**, before Stage 9 begins. Stage 8.2 makes no schema or migration change.
 * **Consequences:** The decision is recorded now; the runtime remains in-memory until Stage 8.3 attaches PostgreSQL without destructive migration.
 
+### ADR-0047: Real PostgreSQL Connection and Opt-In Persistence Composition (Stage 8.3)
+
+* **Context:** The `pg` driver had never been installed in the repository's history; the 20 Drizzle repositories and the Drizzle inventory unit of work were compiled against `drizzle-orm/pg-core` but had never executed against a live database. Eight composition roots (`getDefaultAuthService` + seven containers) hard-coded `new InMemory*Repository()`.
+* **Decision:**
+  1. `@v-gold/database` gains the `pg` driver; `pg/connection.ts` provides `createPgPool`/`createPgConnection` (Drizzle over `node-postgres`) using the existing `DATABASE_*` configuration (`createDatabaseConfigFromEnv`). The repository constructor type `PgDatabase<any>` is corrected to `PgDatabase<any, any, any>` so a schema-carrying database is assignable (the old spelling silently demanded an empty schema).
+  2. A single composition factory `createPersistence(env)` (`persistence.ts`) returns every repository port + the inventory unit of work. **PostgreSQL mode is explicit opt-in: `DATABASE_ENABLED=true`** (plus `DATABASE_HOST/PORT/USER/PASSWORD/NAME/SSL/MAX_CONNECTIONS`); the default remains in-memory — byte-for-byte the behavior all 537 existing tests pin. One shared connection pool is reused across composition roots; `close()` releases it.
+  3. All eight composition roots construct their repositories from `createPersistence()`. Bootstrap data (reference FX pairs, `src_unavailable`, four market instruments, three reference pricing rules) stays as it is: explicit-id seeds are upsert-idempotent; the FX reference seed (generated ids) is guarded by `findLatest` in PostgreSQL mode so durable storage is not duplicated per boot.
+* **Consequences:** The web runtime connects to a real PostgreSQL database whenever `DATABASE_ENABLED=true` and behaves identically to in-memory mode otherwise. Reference/bootstrap data seeding in PostgreSQL mode is idempotent.
+
+### ADR-0048: Sequential File-Based Migration Runner with Ledger (Stage 8.3)
+
+* **Context:** Eleven sequential additive SQL migrations (0001–0011) existed as reviewed files but no runner existed; nothing ever applied them to a live database.
+* **Decision:** `pg/migrate.ts` (`runMigrations(pool, migrationsDir?)`) applies `NNNN_*.sql` files in ascending filename order, each inside its own transaction **together with** its ledger entry in the additive `schema_migrations` table (atomic apply+record). Re-runs are idempotent (applied files are skipped). Out-of-order states — an unapplied file that sorts before an already-applied file — are refused loudly instead of guessed. Migration files ship with the build (`dist/migrations`). Only additive/forward SQL is admitted (no destructive migration, per the session constraints).
+* **Consequences:** Applying 0001–0012 to a real PostgreSQL cluster is deterministic, resumable, and reviewable; the runner itself is verified against a real cluster in `tests/postgres-infrastructure.test.ts`.
+
+### ADR-0049: Conditional Row-Level Security with Tenant Context (Stage 8.3)
+
+* **Context:** Tenant isolation lived in service/repository WHERE clauses only. The port contracts deliberately include **un-scoped** reads on tenant-scoped tables: cross-tenant existence probes behind 403/404 (`findById(id)` without tenant), public marketplace discovery (`findBySlug`, `listPublicSellers`, `listPublicListings`), login membership discovery (`findAllByUser`), and global counts (`PricingRule/Result.count()`). A naive strict RLS policy would break all of them.
+* **Decision:**
+  1. Migration `0012_row_level_security.sql` enables **and forces** RLS on all 12 tenant-scoped tables (`stores`, `tenant_memberships`, `pricing_rules`, `pricing_results`, `products`, `product_variants`, `inventory_locations`, `inventory_items`, `inventory_movements`, `seller_profiles`, `seller_listings`, `seller_workspaces`) with one conditional policy each: `app_current_tenant_id() IS NULL OR tenant_id = app_current_tenant_id()` for both `USING` and `WITH CHECK` (`FORCE ROW LEVEL SECURITY` binds even the table owner).
+  2. The enforcement key is the transaction-local GUC `app.tenant_id`, set via `withTenantContext(db, tenantId, fn)` (`pg/tenant-context.ts`, `set_config(..., true)` — pooling-safe). **Context set** ⇒ hard isolation: unfiltered SELECTs see only the context's rows, UPDATE/DELETE cannot touch foreign rows, and INSERTs carrying a foreign `tenant_id` are refused by `WITH CHECK` (defense in depth against identity spoofing). **Context unset** ⇒ the deliberate global/probe/public branch of the port contract.
+  3. In PostgreSQL mode `persistence.ts` wraps the 12 tenant-scoped repositories (and the inventory unit of work) in tenant-context decorators (`pg/tenant-scoped.ts`) that bind every call to the tenant of its argument (or of the written entity); deliberately un-scoped methods run without a context. The restricted `vgold_app` role (non-owner, plain DML grants) is the expected runtime role.
+* **Consequences:** DB-enforced tenant isolation whenever a tenant context is present — independent of application WHERE clauses — while every existing cross-tenant probe, public discovery, and auth flow keeps its exact contract. The full matrix (context isolation, WITH CHECK, cross-tenant UPDATE/DELETE, global branch, decorator binding) is proven as `vgold_app` against a real cluster.
+
 ---
 
 ## 9. Security & Boundary Hardening Status

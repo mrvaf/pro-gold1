@@ -161,6 +161,16 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 
 ---
 
+### Stage 8.3 — Real Data Infrastructure (actual PostgreSQL, safe migration, RLS)
+* **Status:** **COMPLETE & FINALIZED**
+* **Focus:**
+  - First live database driver in the project's history: `pg` + Drizzle over `node-postgres`; `createPersistence()` composition factory serves all 21 ports with explicit `DATABASE_ENABLED=true` opt-in (default remains in-memory) across all eight composition roots (ADR-0047).
+  - Sequential SQL migration runner: 0001–0012 applied to a real cluster, each file atomic with its `schema_migrations` ledger entry, idempotent re-runs, loud out-of-order refusal (ADR-0048).
+  - Row-Level Security enabled + forced on all 12 tenant-scoped tables; conditional tenant policy keyed on the transaction-local `app.tenant_id` GUC; tenant-context decorators bind every repository call to its tenant while the deliberate un-scoped branch preserves cross-tenant probes, public discovery, and login flows (ADR-0049).
+* **Completion Criteria:** 550 tests passing against a live embedded PostgreSQL cluster (537 baseline preserved + 13 new: migration ledger/idempotency, RLS catalog assertions, pg+Drizzle round-trips, cross-tenant probe contract, composition factory modes, and the six-cell RLS enforcement matrix as restricted role `vgold_app`); typecheck PASS; build PASS.
+
+---
+
 ### Stage 9 — AI Conversational Designer
 * **Status:** **PENDING**
 * **Focus:**
