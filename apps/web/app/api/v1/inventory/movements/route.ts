@@ -1,29 +1,36 @@
+import { z } from 'zod';
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { getInventoryContainer } from '@/lib/inventory/inventory-container';
 
+const movementsQuerySchema = z.object({
+  itemId: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get('tenantId');
-    const itemId = searchParams.get('itemId');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameter "tenantId" is required for multi-tenant isolation.',
-          },
-        },
-        { status: 400 }
-      );
+    const auth = await authenticateRequest(req, 'inventory.read');
+    if (!auth.ok) {
+      return auth.response;
     }
 
+    const { searchParams } = new URL(req.url);
+    const parseRes = movementsQuerySchema.safeParse(Object.fromEntries(searchParams));
+    if (!parseRes.success) {
+      return validationErrorResponse('Invalid query parameters.', parseRes.error.format());
+    }
+
+    const { itemId, limit, offset } = parseRes.data;
     const container = getInventoryContainer();
 
     if (itemId) {
-      const movements = await container.inventoryService.listMovements(itemId, tenantId);
+      const movements = await container.inventoryService.listMovements(itemId, auth.tenantId);
       return NextResponse.json(
         {
           success: true,
@@ -33,10 +40,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
-    const offset = searchParams.get('offset') ? Number(searchParams.get('offset')) : undefined;
-
-    const movements = await container.movementRepo.listByTenant(tenantId as any, {
+    const tenantMovements = await container.inventoryService.listMovementsByTenant(auth.tenantId, {
       limit,
       offset,
     });
@@ -44,20 +48,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        data: movements.map((m) => m.toDto()),
+        data: tenantMovements.map((m) => m.toDto()),
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/inventory/movements');
   }
 }

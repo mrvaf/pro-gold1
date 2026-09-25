@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMarketplaceContainer } from '@/lib/marketplace/marketplace-container';
 import { createEntityId, type SellerProfileId } from '@v-gold/core';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 export async function GET(req: NextRequest) {
   try {
+    const identityViolation = rejectIdentityInput(req);
+    if (identityViolation) {
+      return identityViolation;
+    }
+
     const { searchParams } = new URL(req.url);
     const sellerProfileId = searchParams.get('sellerProfileId');
     const tag = searchParams.get('tag');
@@ -25,16 +35,7 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:marketplace/listings');
   }
 }

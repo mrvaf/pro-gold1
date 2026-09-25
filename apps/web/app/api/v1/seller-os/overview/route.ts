@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createEntityId, type TenantId } from '@v-gold/core';
 import { getSellerOsContainer } from '@/lib/seller-os/seller-os-container';
-import { authenticateSellerOsRequest } from '@/lib/seller-os/seller-os-auth';
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.os.read');
+    const auth = await authenticateRequest(req, 'seller.os.read');
     if (!auth.ok) {
       return auth.response;
     }
@@ -23,16 +28,7 @@ export async function GET(req: NextRequest) {
       if (sellerProfileId) {
         const wsRes = await container.sellerOsService.getWorkspaceBySeller(sellerProfileId, tenantId);
         if (wsRes.isErr) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: {
-                code: wsRes.error.code,
-                message: wsRes.error.message,
-              },
-            },
-            { status: wsRes.error.httpStatus }
-          );
+          return toErrorResponse(wsRes.error);
         }
         targetWorkspaceId = wsRes.value.id;
       } else {
@@ -63,16 +59,7 @@ export async function GET(req: NextRequest) {
     );
 
     if (overviewRes.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: overviewRes.error.code,
-            message: overviewRes.error.message,
-          },
-        },
-        { status: overviewRes.error.httpStatus }
-      );
+      return toErrorResponse(overviewRes.error);
     }
 
     return NextResponse.json(
@@ -82,16 +69,7 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

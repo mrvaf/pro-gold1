@@ -138,6 +138,18 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 
 ---
 
+### Stage 8.1 — API Authentication & Error-Handling Hardening
+* **Status:** **COMPLETE & FINALIZED**
+* **Focus:**
+  - Tenant/actor identity derived exclusively from the HttpOnly `vgold_session` session cookie via shared `authenticateRequest` (generalized from `authenticateSellerOsRequest`).
+  - Client identity input (`tenantId`/`actorId` in query/body, `x-tenant-id`/`x-actor-id` headers) rejected with `400 VALIDATION_ERROR` on every route.
+  - Explicit per-operation permissions (`catalog.read/manage`, `inventory.read/manage`, `pricing.read`) with role mapping recorded in ADR-0041.
+  - `/api/v1/inventory/movements` reaches data only through `InventoryService` with Zod-validated pagination.
+  - Shared error mapper (`toErrorResponse`): domain errors keep their contract; unknown errors → generic `INTERNAL_ERROR` + secret/PII-free server logs (ADR-0042).
+* **Completion Criteria:** 525 tests passing (385 baseline preserved without assertion changes + 140 negative-matrix tests: 20 route methods × 7 scenarios); live `next start` verification: all 12 formerly-open routes return 401 without a cookie.
+
+---
+
 ### Stage 9 — AI Conversational Designer
 * **Status:** **PENDING**
 * **Focus:**

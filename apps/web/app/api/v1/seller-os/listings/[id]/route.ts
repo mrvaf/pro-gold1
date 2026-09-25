@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSellerOsContainer } from '@/lib/seller-os/seller-os-container';
-import { authenticateSellerOsRequest } from '@/lib/seller-os/seller-os-auth';
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { getMarketplaceContainer } from '@/lib/marketplace/marketplace-container';
 import type { ListingStatus, ListingVisibility } from '@v-gold/core';
 
@@ -18,27 +23,21 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.listings.manage');
+    const auth = await authenticateRequest(req, 'seller.listings.manage');
     if (!auth.ok) {
       return auth.response;
     }
 
     const { id: listingId } = await context.params;
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = updateListingSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid request payload schema.',
-            details: parseRes.error.format(),
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Invalid request payload schema.', parseRes.error.format());
     }
 
     const { data } = parseRes;
@@ -48,16 +47,7 @@ export async function PATCH(
     // 1. Verify workspace exists and belongs to tenant
     const wsRes = await container.sellerOsService.getWorkspaceById(data.workspaceId, auth.tenantId);
     if (wsRes.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: wsRes.error.code,
-            message: wsRes.error.message,
-          },
-        },
-        { status: wsRes.error.httpStatus }
-      );
+      return toErrorResponse(wsRes.error);
     }
     const ws = wsRes.value;
 
@@ -67,16 +57,7 @@ export async function PATCH(
       auth.tenantId
     );
     if (listingRes.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: listingRes.error.code,
-            message: listingRes.error.message,
-          },
-        },
-        { status: listingRes.error.httpStatus }
-      );
+      return toErrorResponse(listingRes.error);
     }
     const listing = listingRes.value;
 
@@ -105,16 +86,7 @@ export async function PATCH(
       });
 
       if (updateRes.isErr) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: updateRes.error.code,
-              message: updateRes.error.message,
-            },
-          },
-          { status: updateRes.error.httpStatus }
-        );
+        return toErrorResponse(updateRes.error);
       }
     }
 
@@ -128,16 +100,7 @@ export async function PATCH(
       });
 
       if (transRes.isErr) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: transRes.error.code,
-              message: transRes.error.message,
-            },
-          },
-          { status: transRes.error.httpStatus }
-        );
+        return toErrorResponse(transRes.error);
       }
     }
 
@@ -161,16 +124,7 @@ export async function PATCH(
       },
       { status: 200 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

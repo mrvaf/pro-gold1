@@ -1,10 +1,14 @@
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getMarketplaceContainer } from '@/lib/marketplace/marketplace-container';
 import type { SellerStatus } from '@v-gold/core';
 
 const updateSellerSchema = z.object({
-  tenantId: z.string().min(1, 'tenantId is required'),
   storeId: z.string().nullable().optional(),
   displayName: z.string().min(2).max(255).optional(),
   bio: z.string().max(2000).optional(),
@@ -17,7 +21,6 @@ const updateSellerSchema = z.object({
   contactPhone: z.string().optional(),
   targetStatus: z.enum(['ACTIVE', 'SUSPENDED', 'ARCHIVED']).optional(),
   statusReason: z.string().optional(),
-  actorId: z.string().optional(),
 });
 
 export async function GET(
@@ -25,38 +28,18 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await props.params;
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameter "tenantId" is required for multi-tenant isolation.',
-          },
-        },
-        { status: 400 }
-      );
+    const auth = await authenticateRequest(req, 'marketplace.seller.read');
+    if (!auth.ok) {
+      return auth.response;
     }
 
+    const { id } = await props.params;
+
     const container = getMarketplaceContainer();
-    const result = await container.marketplaceService.getSellerProfile(id, tenantId);
+    const result = await container.marketplaceService.getSellerProfile(id, auth.tenantId);
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -66,17 +49,8 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/sellers/[id]');
   }
 }
 
@@ -85,8 +59,17 @@ export async function PATCH(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(req, 'marketplace.seller.manage');
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const { id } = await props.params;
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = updateSellerSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
@@ -110,31 +93,21 @@ export async function PATCH(
     if (data.targetStatus) {
       const transRes = await container.marketplaceService.transitionSellerStatus({
         id,
-        tenantId: data.tenantId,
+        tenantId: auth.tenantId,
         targetStatus: data.targetStatus as SellerStatus,
         reason: data.statusReason,
-        actorId: data.actorId,
+        actorId: auth.actorId,
       });
 
       if (transRes.isErr) {
-        const err = transRes.error;
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: err.code,
-              message: err.message,
-            },
-          },
-          { status: err.httpStatus }
-        );
+        return toErrorResponse(transRes.error);
       }
     }
 
     // 2. Profile attributes update
     const updateRes = await container.marketplaceService.updateSellerProfile({
       id,
-      tenantId: data.tenantId,
+      tenantId: auth.tenantId,
       storeId: data.storeId === null ? '' : data.storeId,
       displayName: data.displayName,
       bio: data.bio,
@@ -145,21 +118,11 @@ export async function PATCH(
       taxId: data.taxId,
       contactEmail: data.contactEmail,
       contactPhone: data.contactPhone,
-      actorId: data.actorId,
+      actorId: auth.actorId,
     });
 
     if (updateRes.isErr) {
-      const err = updateRes.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(updateRes.error);
     }
 
     return NextResponse.json(
@@ -169,16 +132,7 @@ export async function PATCH(
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/sellers/[id]');
   }
 }

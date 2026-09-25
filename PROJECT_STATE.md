@@ -5,11 +5,11 @@
 ## Current Execution Summary
 
 * **Project Version:** `0.8.0-alpha`
-* **Current Stage:** **Stage 8 — Seller OS Foundation**
+* **Current Stage:** **Stage 8.1 — API Authentication & Error-Handling Hardening**
 * **Stage Status:** **COMPLETE & FINALIZED**
-* **Active Working Branch:** `main`
-* **Last Verified Snapshot:** `V-GOLD_STAGE_08_FINAL_COMPLETE` (official annotated Git tag → `main` commit `02ac468`)
-* **Next Target Stage:** **Stage 9 — AI Conversational Designer**
+* **Active Working Branch:** `main` (session delivery branch `arena/01a0d629-pro-gold1` → PR #9)
+* **Last Verified Snapshot:** `V-GOLD_STAGE_08_1_FINAL_COMPLETE` (annotated Git tag; official Stage 8 tag `V-GOLD_STAGE_08_FINAL_COMPLETE` unchanged → `02ac468`)
+* **Next Target Stage:** **Stage 8.2 — ID/scrypt/Purity Hardening**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -28,6 +28,7 @@
 | **6** | **Catalog & Inventory Foundations** | **COMPLETE** | 293 passed / 0 skipped / 0 failed | PASS | PASS | Product/Variant separation, SKU validation & anti-drift derivation, physical weight & carat invariants, finite InventoryStateMachine with IN_TRANSIT workflow, append-only movements, Unit of Work atomicity, store/tenant composite isolation, 0007 & 0008 migrations |
 | **7** | **Seller Marketplace Foundation** | **COMPLETE** | 337 passed / 0 skipped / 0 failed | PASS | PASS | SellerProfile identity & finite lifecycle, global slug uniqueness & normalization (architectural URL decision), SellerListing decoupled from physical inventory, composite database FKs (tenant + product variant consistency), cascading suspension with instant public discovery suppression, non-archived listing uniqueness semantics, 0009 & 0010 migrations |
 | **8** | **Seller OS Foundation** | **COMPLETE** | **385 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `SellerWorkspace` aggregate root, finite lifecycle (`ACTIVE`, `SUSPENDED`, `ARCHIVED`), single workspace per seller profile invariant, IAM reuse with additive `OPERATOR` role and granular permissions, zero-fake-KPI operational overview aggregation, inventory transfer orchestration via Stage 6 UoW with failure-injection verification, listing management orchestration via Stage 7, column-specific composite foreign key `(store_id, tenant_id) ON DELETE SET NULL ("store_id")`, HttpOnly cookie-only authentication enforcement, additive sequential migration `0011_seller_os_foundation.sql`, 100% IDOR blocked |
+| **8.1** | **API Authentication & Error-Handling Hardening** | **COMPLETE** | **525 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Tenant/actor derived only from `vgold_session` via shared `authenticateRequest` (ADR-0041); client `tenantId`/`actorId` (query/body/`x-tenant-id`/`x-actor-id`) → 400 VALIDATION_ERROR; new `catalog.*`/`inventory.*`/`pricing.read` permissions with explicit per-method mapping; `/inventory/movements` via service + Zod pagination; shared error mapper with generic `INTERNAL_ERROR` + secret/PII-free server logs (ADR-0042); 20-method × 7-scenario negative matrix (`tests/api-auth-hardening.test.ts`); live no-cookie verification: all 12 routes → 401 |
 | 9 | AI Conversational Designer | PENDING | — | — | — | Awaiting user command |
 | 10| AI Concept Generation | PENDING | — | — | — | |
 | 11| Visual Search Engine | PENDING | — | — | — | |
@@ -103,7 +104,7 @@ Stage 7: Seller Marketplace Foundation Gate Summary
 
 1. **Seller OS (delivered in Stage 8):** The Seller OS foundation — operational workspaces, staff roles, zero-fake-KPI overview, and inventory/listing orchestration — was delivered in Stage 8. Multi-channel syncing (Deferred to Stage 19) and inventory reservation management (Deferred to Stage 17) remain out of scope.
 2. **Persistence Runtime:** The runtime currently holds data in-memory only and PostgreSQL is not connected (the `pg` driver has never been installed in the entire history). Drizzle schemas and DDL migrations are verified, but no live database is attached.
-3. **API Authentication (Stages 6 & 7):** The catalog, inventory, listings, pricing, and sellers APIs take `tenantId`/`actorId` from the request instead of the session (live-verified: `POST /api/v1/inventory/locations` returns 201 without a cookie). Scheduled for Stage 8.1.
+3. **API Authentication (Stages 6 & 7) — RESOLVED in Stage 8.1:** The catalog, inventory, listings, pricing, and sellers APIs previously took `tenantId`/`actorId` from the request instead of the session (live-verified: `POST /api/v1/inventory/locations` returned 201 without a cookie). **رفع شد (Stage 8.1, ADR-0041/0042):** identity derives only from the `vgold_session` cookie with explicit per-operation permissions; identity input is rejected with 400; raw error messages are no longer returned by any route. Rate limiting, CSRF/Origin validation, and security headers remain out of scope (deferred).
 4. **Order, Checkout & Payment:** No cart, checkout session, escrow, PSP integration, payout schedules, or transaction commission split engines (Deferred to Stage 17).
 5. **Marketplace Reviews & Messaging:** No buyer-seller chat, reviews, rating algorithms, or dispute mediation (Deferred to Stage 20).
 6. **AI Seller Assistant:** No automated copywriting, AI jewelry taggers, or concept generation (Deferred to Stage 9 & 10).
@@ -118,5 +119,6 @@ Stage 7: Seller Marketplace Foundation Gate Summary
 * **Restore:** Commit `b19e292a191d06254a4f45997d3f6ebba1f8ba3e` ("restore(stage-08): restore latest trusted workspace backup") restored the workspace; its tree is byte-identical to original head `ddec6719edb54c8a584adf486cbf6b383c21c220` except the added zip.
 * **Official Stage 8 tag (never to be moved):** `V-GOLD_STAGE_08_FINAL_COMPLETE` → `02ac468908acef224fe78f5184ad3cebd0f37dcc` (tree identical to `b19e292a191d06254a4f45997d3f6ebba1f8ba3e`).
 * **Original history preserved on GitHub (2026-09-25):** the 13 original stage tags (`V-GOLD_STAGE_00_COMPLETE` … `V-GOLD_STAGE_07_FINAL_COMPLETE`) were restored with their original tag objects; `archive/V-GOLD_STAGE_08_FINAL_COMPLETE_ORIGINAL` → `ddec6719edb54c8a584adf486cbf6b383c21c220` preserves the pre-restore Stage 8 head (original tag object `f69987395a53d9e5cb68c08c063400ffd6e3b8ee`).
-* **Integrity audit (2026-09-24):** see `docs/audits/2026-09-24-integrity-audit.md`.
+* **Integrity audit (2026-09-24):** see `docs/audits/2026-09-24-integrity-audit.md` (Stage 8.1 «رفع شد» items: request-sourced identity, raw error messages).
+* **Stage 8.1 (2026-09-25):** API authentication & error-handling hardening delivered on `arena/01a0d629-pro-gold1` (PR #9, commit tag `V-GOLD_STAGE_08_1_FINAL_COMPLETE`); 525 tests (385 preserved — zero assertions removed or weakened — plus 140 negative-matrix tests).
 * **Backup zip removal:** removed from the working tree with a normal commit (remains in Git history: `git show 02ac468908acef224fe78f5184ad3cebd0f37dcc:workspace-01a0d32e-ad2f-71db-b7a1-1cb432688ba0.zip`); `*.zip` is gitignored from this commit forward.

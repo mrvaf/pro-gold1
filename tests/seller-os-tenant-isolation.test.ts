@@ -295,7 +295,6 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': victimTenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${memberSessionToken}`,
           },
           body: JSON.stringify({
@@ -319,7 +318,6 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
         `http://localhost:3000/api/v1/seller-os/overview?workspaceId=${victimWorkspaceId}`,
         {
           headers: {
-            'x-tenant-id': victimTenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
           },
         }
@@ -337,7 +335,6 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
         `http://localhost:3000/api/v1/seller-os/workspace?workspaceId=${victimWorkspaceId}`,
         {
           headers: {
-            'x-tenant-id': attackerTenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
           },
         }
@@ -384,7 +381,6 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': victimTenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${victimSessionToken}`,
           },
           body: JSON.stringify({
@@ -408,7 +404,6 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': attackerTenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
           },
           body: JSON.stringify({
@@ -433,7 +428,6 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': attackerTenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
           },
           body: JSON.stringify({
@@ -458,7 +452,6 @@ describe('Seller OS Multi-Tenant Isolation & IDOR Security', () => {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': attackerTenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
           },
           body: JSON.stringify({

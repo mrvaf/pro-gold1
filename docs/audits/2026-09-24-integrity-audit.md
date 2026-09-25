@@ -26,8 +26,8 @@ Live witness: `POST /api/v1/inventory/locations` without a cookie for an arbitra
 
 ## خلاصه‌ی audit
 
-- امنیت: ۱۲ route بالا بدون احراز هویت‌اند و tenantId/actorId را از درخواست می‌گیرند؛ تأیید زنده: 201 بدون cookie. endpointهای seller-os سالم‌اند (401).
-- ۲۶ از ۳۳ route پیام خام خطا را برمی‌گردانند.
+- امنیت: ۱۲ route بالا بدون احراز هویت‌اند و tenantId/actorId را از درخواست می‌گیرند؛ تأیید زنده: 201 بدون cookie. endpointهای seller-os سالم‌اند (401). **رفع شد (Stage 8.1 — ADR-0041):** هویت فقط از نشست `vgold_session`؛ ورودی tenantId/actorId → 400؛ ماتریس منفی ۲۰ method × ۷ سناریو در `tests/api-auth-hardening.test.ts`؛ تأیید زنده: همه‌ی ۱۲ route بدون cookie → 401.
+- ۲۶ از ۳۳ route پیام خام خطا را برمی‌گردانند. **رفع شد (Stage 8.1 — ADR-0042):** mapper مشترک `toErrorResponse`؛ خطای ناشناخته → INTERNAL_ERROR عمومی + لاگ بدون secret/PII؛ هیچ route پیام خام `error.message` برنمی‌گرداند.
 - داده‌ها در حافظه (in-memory) نگه داشته می‌شوند؛ در کل تاریخچه هیچ‌وقت درایور PostgreSQL نصب نشده.
 - شناسه‌ها با Math.random/Date.now ساخته می‌شوند. scrypt با N=2^14 است (حداقل OWASP: 2^17). fineness عیار ۲۲ = 916.6.
 - مستندات: وضعیت Stage 5 از Stage 1 به‌روز نشده بود؛ 175/39 شمارش قبل از audit Stage 4.1 بود؛ ادعای «bilingual layout» از ابتدا درست نبود.

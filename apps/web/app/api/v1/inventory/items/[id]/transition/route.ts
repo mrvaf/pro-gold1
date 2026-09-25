@@ -1,10 +1,14 @@
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getInventoryContainer } from '@/lib/inventory/inventory-container';
 import type { InventoryStatus } from '@v-gold/core';
 
 const transitionSchema = z.object({
-  tenantId: z.string().min(1, 'tenantId is required'),
   targetStatus: z.enum([
     'AVAILABLE',
     'RESERVED',
@@ -13,7 +17,6 @@ const transitionSchema = z.object({
     'LOST',
     'IN_TRANSIT',
   ]),
-  actorId: z.string().optional(),
   reason: z.string().optional(),
   reference: z.string().optional(),
   toLocationId: z.string().optional(),
@@ -24,8 +27,17 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(req, 'inventory.manage');
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const { id } = await props.params;
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = transitionSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
@@ -47,26 +59,16 @@ export async function POST(
 
     const result = await container.inventoryService.transitionStatus({
       itemId: id,
-      tenantId: data.tenantId,
+      tenantId: auth.tenantId,
       targetStatus: data.targetStatus as InventoryStatus,
-      actorId: data.actorId,
+      actorId: auth.actorId,
       reason: data.reason,
       reference: data.reference,
       toLocationId: data.toLocationId,
     });
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -79,16 +81,7 @@ export async function POST(
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/inventory/items/[id]/transition');
   }
 }

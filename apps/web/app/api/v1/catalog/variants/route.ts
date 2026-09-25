@@ -1,3 +1,8 @@
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getCatalogContainer } from '@/lib/catalog/catalog-container';
@@ -16,7 +21,6 @@ const gemstoneSchema = z.object({
 
 const createVariantSchema = z.object({
   productId: z.string().min(1, 'productId is required'),
-  tenantId: z.string().min(1, 'tenantId is required'),
   sku: z.string().min(3).max(64),
   name: z.string().min(2).max(255),
   jewelryType: z.enum([
@@ -41,12 +45,20 @@ const createVariantSchema = z.object({
   grossWeightGrams: z.union([z.string(), z.number()]),
   gemstones: z.array(gemstoneSchema).optional(),
   pricingRuleId: z.string().optional(),
-  actorId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
+    const auth = await authenticateRequest(req, 'catalog.manage');
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = createVariantSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
@@ -67,7 +79,7 @@ export async function POST(req: NextRequest) {
     const container = getCatalogContainer();
     const result = await container.catalogService.createVariant({
       productId: data.productId,
-      tenantId: data.tenantId,
+      tenantId: auth.tenantId,
       sku: data.sku,
       name: data.name,
       jewelryType: data.jewelryType as JewelryType,
@@ -76,21 +88,11 @@ export async function POST(req: NextRequest) {
       grossWeightGrams: data.grossWeightGrams,
       gemstones: data.gemstones as any,
       pricingRuleId: data.pricingRuleId,
-      actorId: data.actorId,
+      actorId: auth.actorId,
     });
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -100,43 +102,25 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/catalog/variants');
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameter "tenantId" is required for multi-tenant isolation.',
-          },
-        },
-        { status: 400 }
-      );
+    const auth = await authenticateRequest(req, 'catalog.read');
+    if (!auth.ok) {
+      return auth.response;
     }
+
+    const { searchParams } = new URL(req.url);
 
     const productId = searchParams.get('productId');
     const container = getCatalogContainer();
 
     if (productId) {
-      const variants = await container.catalogService.listVariantsByProduct(productId, tenantId);
+      const variants = await container.catalogService.listVariantsByProduct(productId, auth.tenantId);
       return NextResponse.json(
         {
           success: true,
@@ -150,7 +134,7 @@ export async function GET(req: NextRequest) {
     const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
     const offset = searchParams.get('offset') ? Number(searchParams.get('offset')) : undefined;
 
-    const variants = await container.catalogService.listVariants(tenantId, {
+    const variants = await container.catalogService.listVariants(auth.tenantId, {
       status: status ?? undefined,
       limit,
       offset,
@@ -163,16 +147,7 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/catalog/variants');
   }
 }

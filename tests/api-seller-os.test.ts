@@ -252,7 +252,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${memberSessionToken}`,
           },
           body: JSON.stringify({
@@ -278,7 +277,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': tenantId,
           Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
         },
         body: JSON.stringify({
@@ -305,7 +303,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         `http://localhost:3000/api/v1/seller-os/workspace?workspaceId=${workspaceId}`,
         {
           headers: {
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
         }
@@ -324,7 +321,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': tenantId,
           Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
         },
         body: JSON.stringify({
@@ -348,7 +344,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
           },
           body: JSON.stringify({
@@ -370,7 +365,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
           },
           body: JSON.stringify({
@@ -392,7 +386,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         `http://localhost:3000/api/v1/seller-os/overview?workspaceId=${workspaceId}`,
         {
           headers: {
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
         }
@@ -422,7 +415,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
     it('lists staff via GET /api/v1/seller-os/staff', async () => {
       const req = new NextRequest('http://localhost:3000/api/v1/seller-os/staff', {
         headers: {
-          'x-tenant-id': tenantId,
           Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
         },
       });
@@ -440,7 +432,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': tenantId,
           Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
         },
         body: JSON.stringify({
@@ -464,7 +455,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${ownerSessionToken}`,
           },
           body: JSON.stringify({
@@ -490,7 +480,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         `http://localhost:3000/api/v1/seller-os/inventory?workspaceId=${workspaceId}`,
         {
           headers: {
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
         }
@@ -511,7 +500,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
           body: JSON.stringify({
@@ -539,7 +527,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
         `http://localhost:3000/api/v1/seller-os/listings?workspaceId=${workspaceId}`,
         {
           headers: {
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
         }
@@ -558,7 +545,6 @@ describe('Seller OS Web API Routes & RBAC Invariants', () => {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': tenantId,
             Cookie: `${SESSION_COOKIE_NAME}=${operatorSessionToken}`,
           },
           body: JSON.stringify({

@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getMarketDataContainer } from '@/lib/market-data/market-data-container';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 const querySchema = z.object({
   symbol: z.string().min(2).max(64),
@@ -8,20 +13,17 @@ const querySchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    const identityViolation = rejectIdentityInput(req);
+    if (identityViolation) {
+      return identityViolation;
+    }
+
     const { searchParams } = new URL(req.url);
     const rawSymbol = searchParams.get('symbol');
 
     const parseResult = querySchema.safeParse({ symbol: rawSymbol });
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameter "symbol" is required.',
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Query parameter "symbol" is required.');
     }
 
     let symbolOrId = decodeURIComponent(parseResult.data.symbol).trim();
@@ -33,16 +35,7 @@ export async function GET(req: NextRequest) {
     const result = await container.queryService.getLatestObservation(symbolOrId);
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     const { instrument, source, observation, status, ageMs } = result.value;
@@ -76,15 +69,7 @@ export async function GET(req: NextRequest) {
       status,
       ageMs,
     });
-  } catch {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred while querying market data.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:market-data/latest');
   }
 }

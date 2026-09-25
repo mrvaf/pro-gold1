@@ -1,10 +1,14 @@
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getMarketplaceContainer } from '@/lib/marketplace/marketplace-container';
 import type { ListingStatus, ListingVisibility } from '@v-gold/core';
 
 const createListingSchema = z.object({
-  tenantId: z.string().min(1, 'tenantId is required'),
   productId: z.string().min(1, 'productId is required'),
   productVariantId: z.string().min(1, 'productVariantId is required'),
   title: z.string().min(3, 'Listing title must have at least 3 characters').max(255),
@@ -13,7 +17,6 @@ const createListingSchema = z.object({
   initialStatus: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED']).optional(),
   visibility: z.enum(['PUBLIC', 'UNLISTED', 'HIDDEN']).optional(),
   tags: z.array(z.string()).optional(),
-  actorId: z.string().optional(),
 });
 
 export async function POST(
@@ -21,8 +24,17 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(req, 'marketplace.listing.manage');
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const { id: sellerProfileId } = await props.params;
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = createListingSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
@@ -42,7 +54,7 @@ export async function POST(
     const { data } = parseRes;
     const container = getMarketplaceContainer();
     const result = await container.marketplaceService.createListing({
-      tenantId: data.tenantId,
+      tenantId: auth.tenantId,
       sellerProfileId,
       productId: data.productId,
       productVariantId: data.productVariantId,
@@ -52,21 +64,11 @@ export async function POST(
       initialStatus: data.initialStatus as ListingStatus | undefined,
       visibility: data.visibility as ListingVisibility | undefined,
       tags: data.tags,
-      actorId: data.actorId,
+      actorId: auth.actorId,
     });
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -76,17 +78,8 @@ export async function POST(
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/sellers/[id]/listings');
   }
 }
 
@@ -95,22 +88,13 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticateRequest(req, 'marketplace.listing.read');
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const { id: sellerProfileId } = await props.params;
     const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameter "tenantId" is required for multi-tenant isolation.',
-          },
-        },
-        { status: 400 }
-      );
-    }
 
     const status = searchParams.get('status') as ListingStatus | null;
     const visibility = searchParams.get('visibility') as ListingVisibility | null;
@@ -121,7 +105,7 @@ export async function GET(
     const container = getMarketplaceContainer();
     const result = await container.marketplaceService.listListingsBySeller(
       sellerProfileId,
-      tenantId,
+      auth.tenantId,
       {
         status: status ?? undefined,
         visibility: visibility ?? undefined,
@@ -132,17 +116,7 @@ export async function GET(
     );
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -152,16 +126,7 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/sellers/[id]/listings');
   }
 }

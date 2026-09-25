@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSellerOsContainer } from '@/lib/seller-os/seller-os-container';
-import { authenticateSellerOsRequest } from '@/lib/seller-os/seller-os-auth';
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import type { Role, MembershipStatus } from '@v-gold/core';
 
 const updateStaffSchema = z.object({
@@ -14,27 +19,21 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.staff.manage');
+    const auth = await authenticateRequest(req, 'seller.staff.manage');
     if (!auth.ok) {
       return auth.response;
     }
 
     const { id: membershipId } = await context.params;
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = updateStaffSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid request payload schema.',
-            details: parseRes.error.format(),
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Invalid request payload schema.', parseRes.error.format());
     }
 
     const { data } = parseRes;
@@ -49,16 +48,7 @@ export async function PATCH(
         auth.identity.user.id
       );
       if (roleRes.isErr) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: roleRes.error.code,
-              message: roleRes.error.message,
-            },
-          },
-          { status: roleRes.error.httpStatus }
-        );
+        return toErrorResponse(roleRes.error);
       }
     }
 
@@ -71,16 +61,7 @@ export async function PATCH(
         auth.identity.user.id
       );
       if (statusRes.isErr) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: statusRes.error.code,
-              message: statusRes.error.message,
-            },
-          },
-          { status: statusRes.error.httpStatus }
-        );
+        return toErrorResponse(statusRes.error);
       }
     }
 
@@ -113,16 +94,7 @@ export async function PATCH(
       },
       { status: 200 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

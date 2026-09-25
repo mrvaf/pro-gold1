@@ -1,3 +1,8 @@
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCatalogContainer } from '@/lib/catalog/catalog-container';
 
@@ -6,38 +11,18 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await props.params;
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Query parameter "tenantId" is required for multi-tenant isolation.',
-          },
-        },
-        { status: 400 }
-      );
+    const auth = await authenticateRequest(req, 'catalog.read');
+    if (!auth.ok) {
+      return auth.response;
     }
 
+    const { id } = await props.params;
+
     const container = getCatalogContainer();
-    const result = await container.catalogService.getProduct(id, tenantId);
+    const result = await container.catalogService.getProduct(id, auth.tenantId);
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -47,16 +32,7 @@ export async function GET(
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error?.message ?? 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:v1/catalog/products/[id]');
   }
 }

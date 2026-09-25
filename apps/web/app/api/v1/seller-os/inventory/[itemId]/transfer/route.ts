@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSellerOsContainer } from '@/lib/seller-os/seller-os-container';
-import { authenticateSellerOsRequest } from '@/lib/seller-os/seller-os-auth';
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 const transferSchema = z.object({
   workspaceId: z.string().min(1, 'workspaceId is required'),
@@ -15,27 +20,21 @@ export async function POST(
   context: { params: Promise<{ itemId: string }> }
 ) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.inventory.manage');
+    const auth = await authenticateRequest(req, 'seller.inventory.manage');
     if (!auth.ok) {
       return auth.response;
     }
 
     const { itemId } = await context.params;
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = transferSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid request payload schema.',
-            details: parseRes.error.format(),
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Invalid request payload schema.', parseRes.error.format());
     }
 
     const { data } = parseRes;
@@ -52,16 +51,7 @@ export async function POST(
     });
 
     if (result.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: result.error.code,
-            message: result.error.message,
-          },
-        },
-        { status: result.error.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     const { item, movement } = result.value;
@@ -89,16 +79,7 @@ export async function POST(
       },
       { status: 200 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

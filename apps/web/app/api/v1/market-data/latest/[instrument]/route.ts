@@ -1,29 +1,31 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getMarketDataContainer } from '@/lib/market-data/market-data-container';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 const paramSchema = z.object({
   instrument: z.string().min(2).max(64),
 });
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ instrument: string }> }
 ) {
   try {
+    const identityViolation = rejectIdentityInput(req);
+    if (identityViolation) {
+      return identityViolation;
+    }
+
     const rawParams = await context.params;
     const parseResult = paramSchema.safeParse(rawParams);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid instrument parameter.',
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Invalid instrument parameter.');
     }
 
     let symbolOrId = decodeURIComponent(parseResult.data.instrument).trim();
@@ -38,16 +40,7 @@ export async function GET(
     const result = await container.queryService.getLatestObservation(symbolOrId);
 
     if (result.isErr) {
-      const err = result.error;
-      return NextResponse.json(
-        {
-          error: {
-            code: err.code,
-            message: err.message,
-          },
-        },
-        { status: err.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     const { instrument, source, observation, status, ageMs } = result.value;
@@ -81,15 +74,7 @@ export async function GET(
       status,
       ageMs,
     });
-  } catch {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'An unexpected error occurred while querying market data.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error, 'api:market-data/latest/[instrument]');
   }
 }

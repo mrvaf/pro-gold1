@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createEntityId, type TenantId } from '@v-gold/core';
 import { getSellerOsContainer } from '@/lib/seller-os/seller-os-container';
-import { authenticateSellerOsRequest } from '@/lib/seller-os/seller-os-auth';
+import { authenticateRequest } from '@/lib/auth/request-auth';
+import {
+  toErrorResponse,
+  validationErrorResponse,
+  rejectIdentityInput,
+} from '@/lib/api/api-errors';
 
 const createWorkspaceSchema = z.object({
   sellerProfileId: z.string().min(1, 'sellerProfileId is required'),
@@ -20,7 +25,7 @@ const updateWorkspaceSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.os.read');
+    const auth = await authenticateRequest(req, 'seller.os.read');
     if (!auth.ok) {
       return auth.response;
     }
@@ -35,16 +40,7 @@ export async function GET(req: NextRequest) {
     if (workspaceId) {
       const wsRes = await container.sellerOsService.getWorkspaceById(workspaceId, tenantId);
       if (wsRes.isErr) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: wsRes.error.code,
-              message: wsRes.error.message,
-            },
-          },
-          { status: wsRes.error.httpStatus }
-        );
+        return toErrorResponse(wsRes.error);
       }
       return NextResponse.json({ success: true, data: wsRes.value.toDto() });
     }
@@ -52,16 +48,7 @@ export async function GET(req: NextRequest) {
     if (sellerProfileId) {
       const wsRes = await container.sellerOsService.getWorkspaceBySeller(sellerProfileId, tenantId);
       if (wsRes.isErr) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: wsRes.error.code,
-              message: wsRes.error.message,
-            },
-          },
-          { status: wsRes.error.httpStatus }
-        );
+        return toErrorResponse(wsRes.error);
       }
       return NextResponse.json({ success: true, data: wsRes.value.toDto() });
     }
@@ -74,42 +61,27 @@ export async function GET(req: NextRequest) {
       success: true,
       data: workspaces.map((w) => w.toDto()),
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.os.manage');
+    const auth = await authenticateRequest(req, 'seller.os.manage');
     if (!auth.ok) {
       return auth.response;
     }
 
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = createWorkspaceSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid request payload schema.',
-            details: parseRes.error.format(),
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Invalid request payload schema.', parseRes.error.format());
     }
 
     const { data } = parseRes;
@@ -125,16 +97,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (result.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: result.error.code,
-            message: result.error.message,
-          },
-        },
-        { status: result.error.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -144,42 +107,27 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = await authenticateSellerOsRequest(req, 'seller.os.manage');
+    const auth = await authenticateRequest(req, 'seller.os.manage');
     if (!auth.ok) {
       return auth.response;
     }
 
     const rawBody = await req.json();
+    const identityViolation = rejectIdentityInput(req, rawBody);
+    if (identityViolation) {
+      return identityViolation;
+    }
     const parseRes = updateWorkspaceSchema.safeParse(rawBody);
 
     if (!parseRes.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid request payload schema.',
-            details: parseRes.error.format(),
-          },
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse('Invalid request payload schema.', parseRes.error.format());
     }
 
     const { data } = parseRes;
@@ -195,16 +143,7 @@ export async function PATCH(req: NextRequest) {
     });
 
     if (result.isErr) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: result.error.code,
-            message: result.error.message,
-          },
-        },
-        { status: result.error.httpStatus }
-      );
+      return toErrorResponse(result.error);
     }
 
     return NextResponse.json(
@@ -214,16 +153,7 @@ export async function PATCH(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err?.message || 'An unexpected error occurred.',
-        },
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }
