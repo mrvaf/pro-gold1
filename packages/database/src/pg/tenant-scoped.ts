@@ -49,6 +49,9 @@ import type {
   SellerWorkspaceRepositoryPort,
   StoreRepositoryPort,
   UserId,
+  DesignSession,
+  DesignSessionId,
+  DesignSessionRepositoryPort,
 } from '@v-gold/core';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { withTenantContext } from './tenant-context.js';
@@ -446,5 +449,36 @@ export class TenantScopedInventoryUnitOfWork implements InventoryUnitOfWorkPort 
 
   saveItemWithMovement(item: InventoryItem, movement: InventoryMovement): Promise<void> {
     return withTenantContext(this.db, tenantOf(item), () => this.inner.saveItemWithMovement(item, movement));
+  }
+}
+
+export class TenantScopedDesignSessionRepository implements DesignSessionRepositoryPort {
+  constructor(
+    private readonly inner: DesignSessionRepositoryPort,
+    private readonly db: TenantDb
+  ) {}
+
+  save(session: DesignSession): Promise<void> {
+    return withTenantContext(this.db, tenantOf(session), () => this.inner.save(session));
+  }
+
+  findById(id: DesignSessionId, tenantId?: TenantId): Promise<DesignSession | null> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findById(id, tenantId));
+  }
+
+  listByTenant(tenantId: TenantId, limit?: number): Promise<DesignSession[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.listByTenant(tenantId, limit));
+  }
+
+  findByUser(tenantId: TenantId, userId: string): Promise<DesignSession[]> {
+    return withTenantContext(this.db, tenantId, () => this.inner.findByUser(tenantId, userId));
+  }
+
+  delete(id: DesignSessionId, tenantId?: TenantId): Promise<void> {
+    return withTenantContext(this.db, tenantId, () => this.inner.delete(id, tenantId));
+  }
+
+  count(tenantId?: TenantId): Promise<number> {
+    return withTenantContext(this.db, tenantId, () => this.inner.count(tenantId));
   }
 }

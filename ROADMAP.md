@@ -172,12 +172,14 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ---
 
 ### Stage 9 — AI Conversational Designer
-* **Status:** **PENDING**
+* **Status:** **COMPLETE & FINALIZED**
 * **Focus:**
-  - Interactive design session aggregate (`DesignSession`).
-  - AI Gateway integration for natural language prompt analysis.
-  - Extraction of jewelry design attributes (metal, purity, stone, occasion).
-* **Completion Criteria:** AI Gateway port handles timeouts, fallback, and structured output parsing.
+  - Interactive design session aggregate (`DesignSession`) with progressive attribute accumulation (`ExtractedDesignAttributes`).
+  - AI Gateway integration with prompt analysis, structured attribute extraction, resilience timeouts (504 `AiTimeoutError`), and truthful fallback (503 `AiProviderUnavailableError`).
+  - Extraction of jewelry design attributes (metal, purity, stone, occasion, jewelry type).
+  - Multi-tenant persistence: `design_sessions` schema, migration `0013_ai_conversational_designer.sql` with Row-Level Security, Drizzle/In-Memory repositories, and tenant-scoped decorator.
+  - API endpoints `/api/v1/ai/design-sessions` with session-derived identity, granular `ai.design` permission, and 400 rejection for spoofed identity fields.
+* **Completion Criteria:** 571 tests passing; zero regressions; typecheck PASS; build PASS; AI Gateway port handles timeouts, fallback, and structured output parsing.
 
 ---
 

@@ -2,6 +2,8 @@ import {
   type AiGatewayPort,
   type AiPromptRequest,
   type AiPromptResponse,
+  type AttributeExtractionRequest,
+  type AttributeExtractionResponse,
   AiProviderUnavailableError,
   err,
   type Result,
@@ -18,6 +20,17 @@ export class UnavailableAiGatewayAdapter implements AiGatewayPort {
   async executePrompt(
     _request: AiPromptRequest
   ): Promise<Result<AiPromptResponse, AiProviderUnavailableError>> {
+    return err(
+      new AiProviderUnavailableError(this.reason, {
+        provider: 'none',
+        available: false,
+      })
+    );
+  }
+
+  async extractDesignAttributes(
+    _request: AttributeExtractionRequest
+  ): Promise<Result<AttributeExtractionResponse, AiProviderUnavailableError>> {
     return err(
       new AiProviderUnavailableError(this.reason, {
         provider: 'none',

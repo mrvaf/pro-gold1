@@ -23,6 +23,7 @@ export const PERMISSIONS = [
   'seller.inventory.manage',
   'seller.listings.read',
   'seller.listings.manage',
+  'ai.design',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -49,6 +50,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'seller.inventory.manage',
     'seller.listings.read',
     'seller.listings.manage',
+    'ai.design',
   ],
   ADMIN: [
     'tenant.read',
@@ -71,6 +73,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'seller.inventory.manage',
     'seller.listings.read',
     'seller.listings.manage',
+    'ai.design',
   ],
   OPERATOR: [
     'tenant.read',
@@ -87,6 +90,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'seller.inventory.manage',
     'seller.listings.read',
     'seller.listings.manage',
+    'ai.design',
   ],
   MEMBER: [
     'tenant.read',
@@ -95,6 +99,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'seller.os.read',
     'seller.inventory.read',
     'seller.listings.read',
+    'ai.design',
   ],
 };
 

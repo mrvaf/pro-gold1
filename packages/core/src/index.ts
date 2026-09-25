@@ -108,3 +108,11 @@ export * from './domain/seller-os/seller-overview.js';
 export * from './ports/seller-workspace.repository.port.js';
 
 
+
+// AI Conversational Designer Foundations (Stage 9)
+export * from './domain/ai-designer/ai-designer-errors.js';
+export * from './domain/ai-designer/design-session-status.js';
+export * from './domain/ai-designer/design-message.js';
+export * from './domain/ai-designer/extracted-design-attributes.js';
+export * from './domain/ai-designer/design-session.js';
+export * from './ports/design-session.repository.port.js';

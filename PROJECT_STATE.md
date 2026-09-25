@@ -4,12 +4,12 @@
 
 ## Current Execution Summary
 
-* **Project Version:** `0.8.0-alpha`
-* **Current Stage:** **Stage 8.3 — Real Data Infrastructure (PostgreSQL connection, safe migration, RLS)**
+* **Project Version:** `0.9.0-alpha`
+* **Current Stage:** **Stage 9 — AI Conversational Designer**
 * **Stage Status:** **COMPLETE & FINALIZED**
-* **Active Working Branch:** `main` (session delivery branch `arena/01a0d629-pro-gold1` → PR #9)
-* **Last Verified Snapshot:** `V-GOLD_STAGE_08_3_FINAL_COMPLETE` (annotated Git tag; official Stage 8 tag `V-GOLD_STAGE_08_FINAL_COMPLETE` unchanged → `02ac468`; Stage 8.1/8.2 tags preserved)
-* **Next Target Stage:** **Stage 9 — AI Conversational Designer**
+* **Active Working Branch:** `arena/01a0d8b1-pro-gold1`
+* **Last Verified Snapshot:** `Stage 9 Completed`
+* **Next Target Stage:** **Stage 10 — AI Concept Generation**
 * **Execution Status:** **HALTED / AWAITING USER COMMAND**
 
 ---
@@ -31,7 +31,8 @@
 | **8.1** | **API Authentication & Error-Handling Hardening** | **COMPLETE** | **525 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | Tenant/actor derived only from `vgold_session` via shared `authenticateRequest` (ADR-0041); client `tenantId`/`actorId` (query/body/`x-tenant-id`/`x-actor-id`) → 400 VALIDATION_ERROR; new `catalog.*`/`inventory.*`/`pricing.read` permissions with explicit per-method mapping; `/inventory/movements` via service + Zod pagination; shared error mapper with generic `INTERNAL_ERROR` + secret/PII-free server logs (ADR-0042); 20-method × 7-scenario negative matrix (`tests/api-auth-hardening.test.ts`); live no-cookie verification: all 12 routes → 401 |
 | **8.2** | **ID/scrypt/Purity Hardening** | **COMPLETE** | **537 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | UUIDv7 entity ids via the single `IdGenerator` port with CSPRNG — all 12 fallback sites (+ mock provider externalId) delegate to `generateId`; `Math.random`/`Date.now` id generation eliminated (ADR-0043); scrypt `N=2^17, r=8, p=1` (OWASP) with computed maxmem, `VGOLD_SCRYPT_*` overrides behind a safe floor, parameters read from the stored hash (legacy N=16384 keeps verifying), transparent re-hash after successful login (ADR-0044); 22K fineness 916.6 → 916 canonical (ISO 9202) with documented ≈ −0.0655 % gold-content effect (ADR-0045); PostgreSQL decision recorded — real connection in Stage 8.3 (ADR-0046); 12 new tests |
 | **8.3** | **Real Data Infrastructure** | **COMPLETE** | **550 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | First live database driver in project history: `pg` + Drizzle over `node-postgres`, `createPersistence()` composition factory with explicit `DATABASE_ENABLED=true` opt-in (default stays in-memory, ADR-0047); sequential SQL migration runner with atomic apply+record ledger `schema_migrations`, idempotent re-runs, out-of-order refusal — 0001–0012 applied to a real cluster (ADR-0048); Row-Level Security enabled+forced on all 12 tenant-scoped tables with conditional tenant policy keyed on the transaction-local `app.tenant_id` GUC and tenant-context decorators over the 12 repositories + inventory UoW (ADR-0049); embedded real-PostgreSQL test cluster proves the full RLS matrix as restricted role `vgold_app` |
-| 9 | AI Conversational Designer | PENDING | — | — | — | Awaiting user command |
+| **9** | **AI Conversational Designer** | **COMPLETE** | **571 passed / 0 skipped / 0 failed** | **PASS** | **PASS** | `DesignSession` aggregate root with message history (`DesignMessage`), lifecycle transitions (`ACTIVE -> COMPLETED \| ABANDONED`), and progressive attribute extraction (`ExtractedDesignAttributes`); AI Gateway integration with prompt analysis, structured attribute extraction, resilience timeouts (504 `AiTimeoutError`), and truthful fallback (503 `AiProviderUnavailableError`); multi-tenant schema `design_sessions` with migration `0013_ai_conversational_designer.sql` and Row-Level Security (ADR-0050); API endpoints `/api/v1/ai/design-sessions` with session-derived identity and `ai.design` permission enforcement |
+| 10| AI Concept Generation | PENDING | — | — | — | |
 | 10| AI Concept Generation | PENDING | — | — | — | |
 | 11| Visual Search Engine | PENDING | — | — | — | |
 | 12| Budget-Aware Design | PENDING | — | — | — | |

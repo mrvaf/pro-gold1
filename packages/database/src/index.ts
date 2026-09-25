@@ -61,3 +61,8 @@ export * from './providers/mock-market-data.provider.js';
 
 // Security
 export * from './security/scrypt-password-hasher.js';
+
+// Design Session (Stage 9)
+export * from './schema/design-sessions.js';
+export * from './adapters/in-memory-design-session.repository.js';
+export * from './repositories/drizzle-design-session.repository.js';

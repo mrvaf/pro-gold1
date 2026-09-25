@@ -44,5 +44,15 @@ export class BusinessRuleViolationError extends DomainError {
 
 export class AiProviderUnavailableError extends DomainError {
   readonly code: string = 'AI_PROVIDER_UNAVAILABLE';
-  readonly httpStatus = 503;
+  readonly httpStatus: number = 503;
 }
+
+export class AiTimeoutError extends DomainError {
+  readonly code: string = 'AI_PROVIDER_TIMEOUT';
+  readonly httpStatus: number = 504;
+
+  constructor(message: string, details?: Record<string, unknown>) {
+    super(message, details ?? { timeout: true });
+  }
+}
+
