@@ -21,7 +21,7 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
   - Vitest 3.x test harness and scripts (`npm test`, `npm run typecheck`, `npm run build`).
   - Architecture boundary linting and layer validation (AST scan asserting zero leakage into domain).
   - Domain primitives (`Result<T,E>`, `Entity`, `ValueObject`, `EntityId`, `DomainError`, Ports).
-  - Next.js 15 App Router & React 19 web foundation with bilingual layout and `/api/health` endpoint.
+  - Next.js 15 App Router & React 19 web foundation with Persian RTL layout (lang=fa, dir=rtl); bilingual layout not yet implemented; includes `/api/health` endpoint.
 * **Completion Gate:** 16 passed / 0 skipped / 0 failed, 0 type errors, clean Next.js production build.
 
 ---
@@ -69,19 +69,19 @@ This document outlines the strict 26-stage clean-room reconstruction plan for th
 ### Stage 4.1 — Financial Precision & Currency Semantics
 * **Status:** **COMPLETE**
 * **Focus:**
-  - Three-tier precision architecture: Calculation (arbitrary Decimal) vs Storage (`NUMERIC(24, 8)`) vs Presentation (currency minor units).
+  - Three-tier precision architecture: Calculation (arbitrary Decimal) vs Storage (per-type `NUMERIC` scale boundaries — see the Precision Matrix in `ARCHITECTURE.md` §5.2) vs Presentation (currency minor units).
   - Explicit rounding policy: `ROUND_HALF_UP`, `ROUND_HALF_EVEN`, `ROUND_UP`, `ROUND_DOWN` with zero premature rounding on intermediate calculation chains.
   - Enhanced currency semantics (`IRR`, `TOMAN`, `USD`, `EUR`) and statutory Toman/Rial deterministic ratio (`1 TOMAN = 10 IRR`).
   - Directional foreign exchange rate modeling (`FxRate`) with arbitrary-precision reciprocal inversion.
   - Authoritative currency conversion (`CurrencyConverter.convert()`, `tomanToIrr()`, `irrToToman()`).
   - PostgreSQL schema & migration `0004_financial_precision_currency_semantics.sql` (`fx_rates` table).
   - API endpoints: `/api/v1/finance/currencies`, `/api/v1/finance/fx-rates`.
-* **Completion Gate:** 175 passed / 0 skipped / 0 failed across 39 test files, 0 typecheck errors, clean Next.js production build.
+* **Completion Gate:** 187 passed / 0 skipped / 0 failed across 40 test files (the 175 / 39 figures were the pre-audit count), 0 typecheck errors, clean Next.js production build.
 
 ---
 
 ### Stage 5 — Authoritative Pricing Engine
-* **Status:** **PENDING** (Awaiting explicit user command)
+* **Status:** **COMPLETE**
 * **Focus:**
   - Pure domain pricing service calculating:
     - Base Gold Value = $Weight \times \frac{Purity}{750} \times SpotPrice$

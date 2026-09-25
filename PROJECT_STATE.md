@@ -91,7 +91,7 @@ Stage 7: Seller Marketplace Foundation Gate Summary
 - Listing Uniqueness:        PASS (Partial unique index on non-archived listings: status != 'ARCHIVED')
 - Cascading Suspension:      PASS (Suspended seller dynamically suppresses listings from public discovery)
 - Public API Sanitization:   PASS (Strips tenantId, taxId, business registration, internal store links)
-- IDOR / Tenant Isolation:   PASS (Verified across Seller Profiles and Seller Listings)
+- IDOR / Tenant Isolation:   tenant scoping verified at service level (Seller Profiles and Seller Listings); API authentication issue → Stage 8.1
 - Migrations:                0009_seller_marketplace_foundation.sql & 0010_seller_marketplace_integrity.sql (Sequential, additive, reviewable)
 - PostgreSQL Integration:    POSTGRESQL INTEGRATION: NOT AVAILABLE (Sandbox has no pg service; schema & in-memory verified)
 ========================================================================
@@ -101,8 +101,22 @@ Stage 7: Seller Marketplace Foundation Gate Summary
 
 ## Known Limitations & Out-of-Scope Declarations (Stage Confinement)
 
-1. **Seller OS:** No comprehensive merchant operating system, multi-channel syncing, inventory reservation management, or seller team hierarchies (Deferred to Stage 8).
-2. **Order, Checkout & Payment:** No cart, checkout session, escrow, PSP integration, payout schedules, or transaction commission split engines (Deferred to Stage 17).
-3. **Marketplace Reviews & Messaging:** No buyer-seller chat, reviews, rating algorithms, or dispute mediation (Deferred to Stage 20).
-4. **AI Seller Assistant:** No automated copywriting, AI jewelry taggers, or concept generation (Deferred to Stage 9 & 10).
-5. **Pricing Engine:** Stage 7 strictly delegates all price calculations to Stage 5 `PricingEngine`; no commercial percentages or margins are invented in Marketplace.
+1. **Seller OS (delivered in Stage 8):** The Seller OS foundation — operational workspaces, staff roles, zero-fake-KPI overview, and inventory/listing orchestration — was delivered in Stage 8. Multi-channel syncing (Deferred to Stage 19) and inventory reservation management (Deferred to Stage 17) remain out of scope.
+2. **Persistence Runtime:** The runtime currently holds data in-memory only and PostgreSQL is not connected (the `pg` driver has never been installed in the entire history). Drizzle schemas and DDL migrations are verified, but no live database is attached.
+3. **API Authentication (Stages 6 & 7):** The catalog, inventory, listings, pricing, and sellers APIs take `tenantId`/`actorId` from the request instead of the session (live-verified: `POST /api/v1/inventory/locations` returns 201 without a cookie). Scheduled for Stage 8.1.
+4. **Order, Checkout & Payment:** No cart, checkout session, escrow, PSP integration, payout schedules, or transaction commission split engines (Deferred to Stage 17).
+5. **Marketplace Reviews & Messaging:** No buyer-seller chat, reviews, rating algorithms, or dispute mediation (Deferred to Stage 20).
+6. **AI Seller Assistant:** No automated copywriting, AI jewelry taggers, or concept generation (Deferred to Stage 9 & 10).
+7. **Pricing Engine:** Stage 7 strictly delegates all price calculations to Stage 5 `PricingEngine`; no commercial percentages or margins are invented in Marketplace.
+
+---
+
+## History & Provenance
+
+* **Original development history:** 17 commits (root `c8a392e87308de6a3eb41c050309b8c1e2b26355`, head `ddec6719edb54c8a584adf486cbf6b383c21c220`) authored in the build workspace as `V-GOLD Builder <builder@v-gold.internal>`.
+* **Trusted workspace backup:** `workspace-01a0d32e-ad2f-71db-b7a1-1cb432688ba0.zip` (SHA-256 `c755579c5aed41d36402a3271f2062b8915173ddd130c2efc178a3bd25ea98a0`).
+* **Restore:** Commit `b19e292a191d06254a4f45997d3f6ebba1f8ba3e` ("restore(stage-08): restore latest trusted workspace backup") restored the workspace; its tree is byte-identical to original head `ddec6719edb54c8a584adf486cbf6b383c21c220` except the added zip.
+* **Official Stage 8 tag (never to be moved):** `V-GOLD_STAGE_08_FINAL_COMPLETE` → `02ac468908acef224fe78f5184ad3cebd0f37dcc` (tree identical to `b19e292a191d06254a4f45997d3f6ebba1f8ba3e`).
+* **Original history preserved on GitHub (2026-09-25):** the 13 original stage tags (`V-GOLD_STAGE_00_COMPLETE` … `V-GOLD_STAGE_07_FINAL_COMPLETE`) were restored with their original tag objects; `archive/V-GOLD_STAGE_08_FINAL_COMPLETE_ORIGINAL` → `ddec6719edb54c8a584adf486cbf6b383c21c220` preserves the pre-restore Stage 8 head (original tag object `f69987395a53d9e5cb68c08c063400ffd6e3b8ee`).
+* **Integrity audit (2026-09-24):** see `docs/audits/2026-09-24-integrity-audit.md`.
+* **Backup zip removal:** removed from the working tree with a normal commit (remains in Git history: `git show 02ac468908acef224fe78f5184ad3cebd0f37dcc:workspace-01a0d32e-ad2f-71db-b7a1-1cb432688ba0.zip`); `*.zip` is gitignored from this commit forward.
