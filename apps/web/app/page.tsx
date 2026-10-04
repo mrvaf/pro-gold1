@@ -2,483 +2,979 @@
 
 import { useState } from 'react';
 
-type RoleView = 'buyer' | 'seller' | 'admin' | 'all-stages';
+type MainTab = 'showcase' | 'ai-studio' | 'sellers' | 'seller-dashboard' | 'admin-governance';
 
-interface Seller {
+interface GoldProduct {
+  readonly id: string;
+  readonly title: string;
+  readonly category: 'انگشتر' | 'دستبند' | 'گردنبند' | 'سرویس' | 'گوشواره' | 'شمش';
+  readonly weightG: number;
+  readonly karat: number;
+  readonly wagePercent: number; // درصد اجرت
+  readonly sellerName: string;
+  readonly sellerCity: string;
+  readonly guildCode: string;
+  readonly imageUrl: string;
+  readonly inStock: boolean;
+  readonly isSpecialOffer?: boolean;
+}
+
+interface SellerProfile {
   readonly id: string;
   readonly name: string;
   readonly city: string;
+  readonly address: string;
+  readonly phone: string;
+  readonly licenseNumber: string;
   readonly trustScore: number;
   readonly completedOrders: number;
   readonly activityYears: number;
-  readonly badge: string;
+  readonly specialities: readonly string[];
   readonly guildVerified: boolean;
-  readonly baseLaborRateG: number;
+  readonly canTakeCustomOrders: boolean;
 }
 
-interface RfqProposal {
-  readonly sellerId: string;
-  readonly sellerName: string;
-  readonly estimatedCostToman: number;
-  readonly leadDays: number;
-  readonly warrantyMonths: number;
-  readonly trustScore: number;
-}
+const LIVE_GOLD_18K_PRICE = 4385000; // تومان به ازای هر گرم طلای ۱۸ عیار
 
-const VERIFIED_SELLERS: readonly Seller[] = [
+const INITIAL_PRODUCTS: readonly GoldProduct[] = [
+  {
+    id: 'GP-101',
+    title: 'دستبند النگویی طرح کارتیر لاو (Cartier Love)',
+    category: 'دستبند',
+    weightG: 14.2,
+    karat: 18,
+    wagePercent: 12,
+    sellerName: 'گالری و زرگری سلطانی',
+    sellerCity: 'تهران',
+    guildCode: 'T-98214',
+    imageUrl: 'https://images.unsplash.com/photo-1611591475870-6577573d8272?auto=format&fit=crop&w=600&q=80',
+    inStock: true,
+    isSpecialOffer: true,
+  },
+  {
+    id: 'GP-102',
+    title: 'انگشتر تک نگین سولیتر برلیان پاک شناسنامه‌دار',
+    category: 'انگشتر',
+    weightG: 4.8,
+    karat: 18,
+    wagePercent: 16,
+    sellerName: 'جواهرسازی درخشان اصفهان',
+    sellerCity: 'اصفهان',
+    guildCode: 'ESF-4412',
+    imageUrl: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=600&q=80',
+    inStock: true,
+  },
+  {
+    id: 'GP-103',
+    title: 'گردنبند زنانه طلا زرد طرح ون‌کلیف با صدف طبیعی',
+    category: 'گردنبند',
+    weightG: 8.5,
+    karat: 18,
+    wagePercent: 14,
+    sellerName: 'زرگری آریا تبریز',
+    sellerCity: 'تبریز',
+    guildCode: 'TBZ-7731',
+    imageUrl: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80',
+    inStock: true,
+    isSpecialOffer: true,
+  },
+  {
+    id: 'GP-104',
+    title: 'سرویس طلا عروس طرح اسلیمی فیوژن بدون نگین',
+    category: 'سرویس',
+    weightG: 28.6,
+    karat: 18,
+    wagePercent: 10,
+    sellerName: 'گالری فاخر مشهد',
+    sellerCity: 'مشهد',
+    guildCode: 'MSH-1290',
+    imageUrl: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=600&q=80',
+    inStock: true,
+  },
+  {
+    id: 'GP-105',
+    title: 'گوشواره آویز طرح اشک با طلای سفید و تراش لیزری',
+    category: 'گوشواره',
+    weightG: 5.3,
+    karat: 18,
+    wagePercent: 15,
+    sellerName: 'گالری و زرگری سلطانی',
+    sellerCity: 'تهران',
+    guildCode: 'T-98214',
+    imageUrl: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=600&q=80',
+    inStock: true,
+  },
+  {
+    id: 'GP-106',
+    title: 'پلاک شمش طلای سوئیسی استاندارد عیار ۲۴ (PAMP)',
+    category: 'شمش',
+    weightG: 10.0,
+    karat: 24,
+    wagePercent: 4,
+    sellerName: 'صرافی و سکه طلای امین',
+    sellerCity: 'تهران',
+    guildCode: 'T-11029',
+    imageUrl: 'https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=600&q=80',
+    inStock: true,
+  },
+];
+
+const VERIFIED_SELLERS: readonly SellerProfile[] = [
   {
     id: 's-101',
-    name: 'زرگری و گالری سلطانی (تهران)',
-    city: 'تهران، بازار بزرگ',
-    trustScore: 98.4,
-    completedOrders: 1420,
-    activityYears: 18,
-    badge: 'طلاساز برتر صنفی',
+    name: 'زرگری و گالری سلطانی',
+    city: 'تهران',
+    address: 'تهران، بازار بزرگ، سرای خرد، پلاک ۲۴',
+    phone: '۰۲۱-۵۵۶۲۳۴۸۹',
+    licenseNumber: 'اتحادیه تهران: ۹۸۲۱۴-T',
+    trustScore: 98.7,
+    completedOrders: 1840,
+    activityYears: 22,
+    specialities: ['طلا دست‌ساز', 'النگو و دستبند', 'فیوژن بدون نگین'],
     guildVerified: true,
-    baseLaborRateG: 195000,
+    canTakeCustomOrders: true,
   },
   {
     id: 's-102',
-    name: 'استودیو جواهرسازی درخشان',
-    city: 'اصفهان، میدان نقش جهان',
-    trustScore: 96.8,
-    completedOrders: 980,
-    activityYears: 12,
-    badge: 'متخصص ریخته‌گری ۳D',
+    name: 'استودیو جواهرسازی درخشان اصفهان',
+    city: 'اصفهان',
+    address: 'اصفهان، میدان نقش جهان، بازار قیصریه، پاساژ عتیق',
+    phone: '۰۳۱-۳۲۲۱۸۷۶۵',
+    licenseNumber: 'اتحادیه اصفهان: ۴۴۱۲-ESF',
+    trustScore: 97.4,
+    completedOrders: 1120,
+    activityYears: 14,
+    specialities: ['مخراج‌کاری برلیان', 'ریخته‌گری ۳D', 'سنگ‌های قیمتی شناسنامه‌دار'],
     guildVerified: true,
-    baseLaborRateG: 180000,
+    canTakeCustomOrders: true,
   },
   {
     id: 's-103',
-    name: 'کارگاه زرگری آریا',
-    city: 'تبریز، راسته بازار',
-    trustScore: 94.2,
-    completedOrders: 650,
-    activityYears: 9,
-    badge: 'سازنده تخصصی سرویس و نگین',
+    name: 'زرگری آریا تبریز',
+    city: 'تبریز',
+    address: 'تبریز، راسته بازار امیر، کوچه زرگران، پلاک ۸',
+    phone: '۰۴۱-۳۵۲۶۱۹۴۰',
+    licenseNumber: 'اتحادیه تبریز: ۷۷۳۱-TBZ',
+    trustScore: 95.1,
+    completedOrders: 780,
+    activityYears: 11,
+    specialities: ['سرویس عروس', 'تراش لیزری دقیق', 'طراحی مینیمال'],
     guildVerified: true,
-    baseLaborRateG: 165000,
+    canTakeCustomOrders: true,
   },
   {
     id: 's-104',
     name: 'جواهرات فاخر مشهد',
-    city: 'مشهد، خسروی نو',
-    trustScore: 91.5,
-    completedOrders: 430,
-    activityYears: 6,
-    badge: 'تأیید شده اتحادیه',
+    city: 'مشهد',
+    address: 'مشهد، خیابان خسروی نو، مجتمع طلای کوثر، واحد ۱۲',
+    phone: '۰۵۱-۳۲۲۴۹۸۰۱',
+    licenseNumber: 'اتحادیه مشهد: ۱۲۹۰-MSH',
+    trustScore: 93.8,
+    completedOrders: 590,
+    activityYears: 8,
+    specialities: ['انگشترهای فاخر', 'نگین عقیق و فیروزه نیشابور'],
     guildVerified: true,
-    baseLaborRateG: 155000,
+    canTakeCustomOrders: false,
   },
 ];
 
 export default function HomePage() {
-  const [role, setRole] = useState<RoleView>('buyer');
+  const [activeTab, setActiveTab] = useState<MainTab>('showcase');
+  const [selectedCity, setSelectedCity] = useState<string>('همه شهرها');
+  const [selectedCategory, setSelectedCategory] = useState<string>('همه');
+  const [reservationModalItem, setReservationModalItem] = useState<GoldProduct | null>(null);
+  const [reservedSuccessCode, setReservedSuccessCode] = useState<string | null>(null);
 
   // AI RFQ Studio State
-  const [aiPrompt, setAiPrompt] = useState('انگشتر طلای ۱۸ عیار زنانه، طرح اسلیمی ترنج، مزین به زمرد طبیعی و تراش برلیان');
-  const [targetWeightG, setTargetWeightG] = useState(6.5);
-  const [rfqCreated, setRfqCreated] = useState(false);
-  const [selectedProposal, setSelectedProposal] = useState<RfqProposal | null>(null);
+  const [aiDesignStyle, setAiDesignStyle] = useState('انگشتر سولیتر نامزدی مدرن با پایه رزگلد و تراش زمرد با ۴ چنگک نگهدارنده');
+  const [aiUserCity, setAiUserCity] = useState('تهران');
+  const [aiEstimatedWeight, setAiEstimatedWeight] = useState(5.5);
+  const [rfqSubmitted, setRfqSubmitted] = useState(false);
+  const [selectedWorkshopQuote, setSelectedWorkshopQuote] = useState<string | null>(null);
 
-  // Market live price simulation
-  const goldPrice18kGram = 4385000; // تومان به ازای هر گرم ۱۸ عیار
+  // Calculate official gold price according to legal guidelines
+  // Price = (Weight * RawGoldPrice) * (1 + Wage% + 7% Profit) + 10% VAT on (Wage+Profit)
+  const calculateExactGoldPrice = (weightG: number, wagePercent: number, karat = 18): number => {
+    const rawPrice = (weightG * LIVE_GOLD_18K_PRICE) * (karat / 18);
+    const wageAmount = rawPrice * (wagePercent / 100);
+    const profitAmount = (rawPrice + wageAmount) * 0.07;
+    const vatAmount = (wageAmount + profitAmount) * 0.10; // مالیات فقط بر اجرت و سود
+    return Math.round(rawPrice + wageAmount + profitAmount + vatAmount);
+  };
 
-  const proposals: readonly RfqProposal[] = VERIFIED_SELLERS.map((s) => ({
-    sellerId: s.id,
-    sellerName: s.name,
-    estimatedCostToman: Math.round((targetWeightG * goldPrice18kGram) + (targetWeightG * s.baseLaborRateG * 1.09)),
-    leadDays: s.activityYears > 10 ? 5 : 8,
-    warrantyMonths: 24,
-    trustScore: s.trustScore,
-  }));
+  const filteredProducts = INITIAL_PRODUCTS.filter((p) => {
+    if (selectedCity !== 'همه شهرها' && p.sellerCity !== selectedCity) return false;
+    if (selectedCategory !== 'همه' && p.category !== selectedCategory) return false;
+    return true;
+  });
+
+  const handleMakeReservation = (product: GoldProduct) => {
+    const randomCode = 'VG-' + Math.floor(100000 + Math.random() * 900000);
+    setReservedSuccessCode(randomCode);
+  };
 
   return (
     <main
       style={{
         minHeight: '100vh',
-        background: '#090d16',
+        background: '#070a11',
         color: '#f8fafc',
-        padding: '2rem 1.5rem',
         direction: 'rtl',
         fontFamily: 'system-ui, -apple-system, sans-serif',
       }}
     >
-      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+      {/* 1. TOP LIVE TICKER & TRUST BAR */}
+      <div
+        style={{
+          background: 'linear-gradient(90deg, #131a29 0%, #0d131f 100%)',
+          borderBottom: '1px solid #1f2a3f',
+          padding: '0.6rem 1.5rem',
+          fontSize: '0.85rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fbbf24', fontWeight: 700 }}>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+            مظنه زنده طلای ۱۸ عیار: {LIVE_GOLD_18K_PRICE.toLocaleString('fa-IR')} تومان/گرم
+          </span>
+          <span style={{ color: '#94a3b8' }}>| انس جهانی: ۲,۶۵۴ دلار</span>
+          <span style={{ color: '#94a3b8' }}>| سکه امامی طرح جدید: ۵۳,۴۵۰,۰۰۰ تومان</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#94a3b8', fontSize: '0.8rem' }}>
+          <span style={{ color: '#10b981' }}>🛡 ضمانت اصالت فیزیکی و فاکتور رسمی اتحادیه</span>
+          <span>پشتیبانی مرکزی: ۰۲۱-۹۱۰۰۸۸۷۷</span>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '1.5rem' }}>
         
-        {/* Navigation Bar & Role Switcher */}
+        {/* 2. MAIN BRAND HEADER & NAVIGATION */}
         <header
           style={{
+            background: 'linear-gradient(135deg, #121929 0%, #172238 100%)',
+            border: '1px solid #23314d',
+            borderRadius: '1.25rem',
+            padding: '1.25rem 2rem',
+            marginBottom: '2rem',
+            boxShadow: '0 20px 35px -10px rgba(0,0,0,0.5)',
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '1rem',
-            padding: '1.25rem 1.75rem',
-            background: '#131b2e',
-            borderRadius: '1rem',
-            border: '1px solid #23304b',
-            marginBottom: '2rem',
+            gap: '1.5rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div
               style={{
-                width: '2.5rem',
-                height: '2.5rem',
-                borderRadius: '0.5rem',
-                background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
+                width: '3.2rem',
+                height: '3.2rem',
+                borderRadius: '0.75rem',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
+                boxShadow: '0 0 20px rgba(245, 158, 11, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#000',
+                color: '#fff',
                 fontWeight: 900,
-                fontSize: '1.2rem',
+                fontSize: '1.6rem',
               }}
             >
               V
             </div>
             <div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#f1f5f9' }}>
-                پلتفرم معاملات و ساخت سفارشی V-GOLD
-              </h1>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                نرخ طلا ۱۸ عیار بازار: ۴,۳۸۵,۰۰۰ تومان | ۲۶ ماژول فعال
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h1 style={{ fontSize: '1.6rem', fontWeight: 900, margin: 0, color: '#f8fafc', letterSpacing: '-0.5px' }}>
+                  اکوسیستم معاملات و طراحی طلا V-GOLD
+                </h1>
+                <span style={{ background: '#f59e0b', color: '#000', fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+                  نسخه تجاری رسمی
+                </span>
+              </div>
+              <p style={{ margin: '0.2rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>
+                سامانه هوشمند معرفی ویترین طلافروشان دارای جواز کسب + استودیو سفارش ساخت با هوش مصنوعی
+              </p>
             </div>
           </div>
 
-          {/* Role Switcher Tabs */}
-          <div style={{ display: 'flex', gap: '0.4rem', background: '#090d16', padding: '0.3rem', borderRadius: '0.75rem', border: '1px solid #23304b' }}>
+          {/* MAIN TABS NAVIGATION */}
+          <nav style={{ display: 'flex', gap: '0.4rem', background: '#090d16', padding: '0.35rem', borderRadius: '0.85rem', border: '1px solid #23314d' }}>
             <button
-              onClick={() => setRole('buyer')}
+              onClick={() => setActiveTab('showcase')}
               style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '0.5rem',
+                padding: '0.65rem 1.25rem',
+                borderRadius: '0.6rem',
                 border: 'none',
-                background: role === 'buyer' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'transparent',
-                color: role === 'buyer' ? '#000' : '#94a3b8',
+                background: activeTab === 'showcase' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'transparent',
+                color: activeTab === 'showcase' ? '#000' : '#cbd5e1',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                transition: 'all 0.2s',
+              }}
+            >
+              💎 ویترین طلاهای آماده خرید
+            </button>
+            <button
+              onClick={() => setActiveTab('ai-studio')}
+              style={{
+                padding: '0.65rem 1.25rem',
+                borderRadius: '0.6rem',
+                border: 'none',
+                background: activeTab === 'ai-studio' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'transparent',
+                color: activeTab === 'ai-studio' ? '#000' : '#cbd5e1',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                transition: 'all 0.2s',
+              }}
+            >
+              ✨ استودیو طراحی AI و ساخت سفارشی
+            </button>
+            <button
+              onClick={() => setActiveTab('sellers')}
+              style={{
+                padding: '0.65rem 1.25rem',
+                borderRadius: '0.6rem',
+                border: 'none',
+                background: activeTab === 'sellers' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'transparent',
+                color: activeTab === 'sellers' ? '#000' : '#cbd5e1',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                transition: 'all 0.2s',
+              }}
+            >
+              🏛 طلافروشان و کارگاه‌های تاییدشده
+            </button>
+            <button
+              onClick={() => setActiveTab('seller-dashboard')}
+              style={{
+                padding: '0.65rem 1.25rem',
+                borderRadius: '0.6rem',
+                border: 'none',
+                background: activeTab === 'seller-dashboard' ? '#1e293b' : 'transparent',
+                color: activeTab === 'seller-dashboard' ? '#38bdf8' : '#94a3b8',
                 fontWeight: 700,
                 cursor: 'pointer',
                 fontSize: '0.85rem',
+                transition: 'all 0.2s',
               }}
             >
-              داشبورد خریدار و استودیو AI
+              📦 پنل طلافروش (Seller OS)
             </button>
             <button
-              onClick={() => setRole('seller')}
+              onClick={() => setActiveTab('admin-governance')}
               style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '0.5rem',
+                padding: '0.65rem 1.25rem',
+                borderRadius: '0.6rem',
                 border: 'none',
-                background: role === 'seller' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'transparent',
-                color: role === 'seller' ? '#000' : '#94a3b8',
+                background: activeTab === 'admin-governance' ? '#1e293b' : 'transparent',
+                color: activeTab === 'admin-governance' ? '#a855f7' : '#94a3b8',
                 fontWeight: 700,
                 cursor: 'pointer',
                 fontSize: '0.85rem',
+                transition: 'all 0.2s',
               }}
             >
-              داشبورد طلافروشان و سازندگان
+              ⚖️ نظارت اتحادیه و احراز
             </button>
-            <button
-              onClick={() => setRole('admin')}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '0.5rem',
-                border: 'none',
-                background: role === 'admin' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'transparent',
-                color: role === 'admin' ? '#000' : '#94a3b8',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-              }}
-            >
-              پنل مدیریت کل و نظارت اتحادیه
-            </button>
-            <button
-              onClick={() => setRole('all-stages')}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '0.5rem',
-                border: 'none',
-                background: role === 'all-stages' ? '#334155' : 'transparent',
-                color: role === 'all-stages' ? '#fff' : '#94a3b8',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-              }}
-            >
-              معماری کل (۲۶ استیج)
-            </button>
-          </div>
+          </nav>
         </header>
 
-        {/* 1. BUYER DASHBOARD & AI RFQ QUOTATION */}
-        {role === 'buyer' && (
+        {/* ============================================================== */}
+        {/* TAB 1: LUXURY JEWELRY SHOWCASE (READY-TO-BUY IN SHOPS)        */}
+        {/* ============================================================== */}
+        {activeTab === 'showcase' && (
+          <div>
+            {/* Filter Bar */}
+            <div
+              style={{
+                background: '#101624',
+                border: '1px solid #1f2a3f',
+                borderRadius: '1rem',
+                padding: '1.25rem 1.75rem',
+                marginBottom: '2rem',
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1.25rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>انتخاب شهر شما:</span>
+                {['همه شهرها', 'تهران', 'اصفهان', 'مشهد', 'تبریز'].map((city) => (
+                  <button
+                    key={city}
+                    onClick={() => setSelectedCity(city)}
+                    style={{
+                      padding: '0.4rem 0.9rem',
+                      borderRadius: '0.5rem',
+                      border: '1px solid',
+                      borderColor: selectedCity === city ? '#f59e0b' : '#23314d',
+                      background: selectedCity === city ? 'rgba(245, 158, 11, 0.15)' : '#161f31',
+                      color: selectedCity === city ? '#fbbf24' : '#cbd5e1',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      fontWeight: selectedCity === city ? 700 : 500,
+                    }}
+                  >
+                    📍 {city}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>دسته‌بندی:</span>
+                {['همه', 'دستبند', 'انگشتر', 'گردنبند', 'سرویس', 'گوشواره', 'شمش'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '0.5rem',
+                      border: '1px solid',
+                      borderColor: selectedCategory === cat ? '#38bdf8' : '#23314d',
+                      background: selectedCategory === cat ? 'rgba(56, 189, 248, 0.15)' : '#161f31',
+                      color: selectedCategory === cat ? '#38bdf8' : '#cbd5e1',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      fontWeight: selectedCategory === cat ? 700 : 500,
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Products Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.75rem' }}>
+              {filteredProducts.map((p) => {
+                const totalPrice = calculateExactGoldPrice(p.weightG, p.wagePercent, p.karat);
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      background: '#121827',
+                      border: '1px solid #1f2b40',
+                      borderRadius: '1.15rem',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.4)',
+                      transition: 'transform 0.2s, border-color 0.2s',
+                    }}
+                  >
+                    {/* Image and Badges */}
+                    <div style={{ position: 'relative', height: '240px', background: '#0a0e17' }}>
+                      <img
+                        src={p.imageUrl}
+                        alt={p.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '0.4rem' }}>
+                        <span style={{ background: 'rgba(0,0,0,0.75)', color: '#fbbf24', padding: '0.25rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem', fontWeight: 700, backdropFilter: 'blur(6px)' }}>
+                          عیار {p.karat}
+                        </span>
+                        {p.isSpecialOffer && (
+                          <span style={{ background: '#ef4444', color: '#fff', padding: '0.25rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                            اجرت استثنایی
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ position: 'absolute', bottom: '12px', right: '12px' }}>
+                        <span style={{ background: 'rgba(15, 23, 42, 0.85)', color: '#cbd5e1', padding: '0.2rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem' }}>
+                          موجود در: {p.sellerCity}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Content Details */}
+                    <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                            فروشگاه: <strong style={{ color: '#fff' }}>{p.sellerName}</strong>
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#10b981' }}>جواز: {p.guildCode} ✓</span>
+                        </div>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 1rem 0', color: '#f8fafc', lineHeight: '1.5' }}>
+                          {p.title}
+                        </h3>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: '#090d16', padding: '0.75rem', borderRadius: '0.6rem', border: '1px solid #1a2336', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
+                          <div>
+                            <span style={{ color: '#64748b' }}>وزن دقیق:</span> <strong>{p.weightG} گرم</strong>
+                          </div>
+                          <div>
+                            <span style={{ color: '#64748b' }}>اجرت ساخت:</span> <strong style={{ color: '#fbbf24' }}>{p.wagePercent}٪</strong>
+                          </div>
+                        </div>
+
+                        <div style={{ marginBottom: '1.25rem' }}>
+                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>قیمت محاسبه‌شده با نرخ لحظه‌ای:</span>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fbbf24', marginTop: '0.2rem' }}>
+                            {totalPrice.toLocaleString('fa-IR')} <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>تومان</span>
+                          </div>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                            (شامل طلای خام + اجرت + ۷٪ سود صنفی + مالیات قانونی بر اجرت)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Button: Reserve & Visit */}
+                      <button
+                        onClick={() => {
+                          setReservationModalItem(p);
+                          handleMakeReservation(p);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          borderRadius: '0.6rem',
+                          background: 'linear-gradient(90deg, #f59e0b, #d97706)',
+                          color: '#000',
+                          fontWeight: 800,
+                          fontSize: '0.9rem',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        🔖 دریافت کد رزرو و خرید حضوری در مغازه
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 2: AI JEWELRY STUDIO & SMART RFQ MANUFACTURING             */}
+        {/* ============================================================== */}
+        {activeTab === 'ai-studio' && (
           <div>
             <div
               style={{
-                background: 'linear-gradient(135deg, #131b2e 0%, #172138 100%)',
-                border: '1px solid #23304b',
+                background: 'linear-gradient(135deg, #131a2c 0%, #19253d 100%)',
+                border: '1px solid #233352',
                 borderRadius: '1.25rem',
-                padding: '2rem',
-                marginBottom: '2rem',
+                padding: '2.5rem',
+                marginBottom: '2.5rem',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <span style={{ background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', padding: '0.3rem 0.8rem', borderRadius: '0.5rem', fontSize: '0.85rem', fontWeight: 700 }}>
-                  استودیو ساخت سفارشی طلا با هوش مصنوعی (AI RFQ Studio)
-                </span>
-                <span style={{ color: '#10b981', fontSize: '0.85rem' }}>● متصل به موتور استعلام قیمت زنده طلاسازان</span>
+              <div style={{ display: 'inline-block', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', padding: '0.35rem 0.9rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 800, marginBottom: '1rem' }}>
+                طراحی شخصی‌سازی شده با هوش مصنوعی + استعلام هوشمند قیمت ساخت
               </div>
 
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 1rem 0', color: '#f8fafc' }}>
-                طراحی جواهر با AI و استعلام قیمت همزمان از بهترین کارگاه‌ها
+              <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: '0 0 1rem 0', color: '#f8fafc' }}>
+                جواهر اختصاصی خود را بسازید؛ استعلام قیمت از نزدیک‌ترین و متخصص‌ترین کارگاه‌ها
               </h2>
-              <p style={{ color: '#94a3b8', lineHeight: '1.7', marginBottom: '1.5rem' }}>
-                طرح رویایی طلای خود را به زبان ساده بنویسید یا مشخصات را وارد کنید؛ هوش مصنوعی جزئیات ساخت را تحلیل کرده و به طلاسازان دارای مجوز اعلام می‌کند تا پیشنهاد قیمت و زمان تحویل بدهند.
+              <p style={{ color: '#94a3b8', fontSize: '1.05rem', lineHeight: '1.8', maxWidth: '850px', margin: '0 0 2rem 0' }}>
+                مدل رویایی طلای خود را بنویسید؛ هوش مصنوعی جزئیات ۳ بعدی آن را استخراج کرده و به کارگاه‌های طلاسازی شهر شما ارسال می‌کند.
+                اگر طرح فوق‌تخصصی باشد و کارگاه شهر شما تجهیزاتش را نداشته باشد، به کارگاه‌های تخصصی تهران و اصفهان ارجاع داده شده و برای تحویل به نزدیک‌ترین طلافروشی شهر شما ارسال می‌شود!
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px auto', gap: '1rem', alignItems: 'end' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 200px auto', gap: '1rem', alignItems: 'end' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '0.5rem' }}>
-                    شرح طراحی و سلیقه ساخت طلا:
+                    شرح سلیقه، مدل و جزئیات طراحی شما:
                   </label>
                   <input
                     type="text"
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
+                    value={aiDesignStyle}
+                    onChange={(e) => setAiDesignStyle(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '0.5rem',
+                      padding: '0.85rem 1rem',
+                      borderRadius: '0.6rem',
                       background: '#090d16',
-                      border: '1px solid #293552',
+                      border: '1px solid #293956',
                       color: '#f8fafc',
                       outline: 'none',
                       fontSize: '0.95rem',
                     }}
                   />
                 </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '0.5rem' }}>
-                    وزن تخمینی طلا (گرم):
+                    شهر محل سکونت شما:
+                  </label>
+                  <select
+                    value={aiUserCity}
+                    onChange={(e) => setAiUserCity(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.85rem 1rem',
+                      borderRadius: '0.6rem',
+                      background: '#090d16',
+                      border: '1px solid #293956',
+                      color: '#f8fafc',
+                      outline: 'none',
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    <option value="تهران">تهران</option>
+                    <option value="اصفهان">اصفهان</option>
+                    <option value="مشهد">مشهد</option>
+                    <option value="تبریز">تبریز</option>
+                    <option value="شیراز">شیراز</option>
+                    <option value="سایر شهرها">سایر شهرها</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '0.5rem' }}>
+                    وزن تخمینی مورد نظر (گرم):
                   </label>
                   <input
                     type="number"
-                    step="0.1"
-                    value={targetWeightG}
-                    onChange={(e) => setTargetWeightG(Number(e.target.value))}
+                    step="0.5"
+                    value={aiEstimatedWeight}
+                    onChange={(e) => setAiEstimatedWeight(Number(e.target.value))}
                     style={{
                       width: '100%',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '0.5rem',
+                      padding: '0.85rem 1rem',
+                      borderRadius: '0.6rem',
                       background: '#090d16',
-                      border: '1px solid #293552',
+                      border: '1px solid #293956',
                       color: '#f8fafc',
                       outline: 'none',
                       fontSize: '0.95rem',
                     }}
                   />
                 </div>
+
                 <button
-                  onClick={() => setRfqCreated(true)}
+                  onClick={() => setRfqSubmitted(true)}
                   style={{
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '0.5rem',
+                    padding: '0.85rem 1.75rem',
+                    borderRadius: '0.6rem',
                     background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
                     color: '#000',
                     fontWeight: 800,
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: '0.95rem',
-                    height: '45px',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  استعلام قیمت لحظه‌ای
+                  🚀 استعلام و ساخت کانسپت
                 </button>
               </div>
             </div>
 
-            {/* RFQ Quotations from Sellers */}
-            <div style={{ marginBottom: '3rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: '#f1f5f9' }}>
-                  پیشنهاد قیمت کارگاه‌ها و طلافروشان تاییدشده برای این سفارش ({proposals.length} پیشنهاد)
-                </h3>
-                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                  مرتب‌سازی هوشمند بر اساس امتیاز اعتبار اتحادیه و کمترین اجرت
-                </span>
-              </div>
+            {/* AI Generated Concept & Multi-Workshop Quotes */}
+            {rfqSubmitted && (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
+                  {/* Concept Preview */}
+                  <div style={{ background: '#121827', border: '1px solid #1f2b40', borderRadius: '1rem', padding: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 1rem 0', color: '#fbbf24' }}>
+                      کانسپت هوش مصنوعی استخراج‌شده:
+                    </h3>
+                    <img
+                      src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=600&q=80"
+                      alt="AI Jewelry Concept"
+                      style={{ width: '100%', height: '220px', objectFit: 'cover', borderRadius: '0.6rem', marginBottom: '1rem' }}
+                    />
+                    <div style={{ fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.7' }}>
+                      <div>• <strong>سبک:</strong> سولیتر ۴ چنگک کلاسیک</div>
+                      <div>• <strong>آلیاژ:</strong> طلای ۱۸ عیار رزگلد (۷۵۰)</div>
+                      <div>• <strong>تراش نگین:</strong> امرالد کات (تراش زمردی)</div>
+                      <div>• <strong>تطابق با عیار استاندارد:</strong> ۱۰۰٪ منطبق با کد اتحادیه</div>
+                    </div>
+                  </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
-                {proposals.map((prop) => {
-                  const isSelected = selectedProposal?.sellerId === prop.sellerId;
-                  return (
-                    <div
-                      key={prop.sellerId}
-                      style={{
-                        background: '#131b2e',
-                        border: `2px solid ${isSelected ? '#fbbf24' : '#23304b'}`,
-                        borderRadius: '1rem',
-                        padding: '1.5rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                          <span style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '0.2rem 0.5rem', borderRadius: '0.3rem', fontSize: '0.8rem', fontWeight: 700 }}>
-                            ★ امتیاز اعتبار: {prop.trustScore} از ۱۰۰
-                          </span>
-                          <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
-                            تحویل {prop.leadDays} روزه
+                  {/* Workshop Quotes */}
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1rem 0', color: '#f8fafc' }}>
+                      پیشنهادهای قیمت ساخت از کارگاه‌های سازنده:
+                    </h3>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {/* Quote 1: Local Workshop */}
+                      <div
+                        style={{
+                          background: selectedWorkshopQuote === 'q1' ? 'rgba(16, 185, 129, 0.1)' : '#121827',
+                          border: `2px solid ${selectedWorkshopQuote === 'q1' ? '#10b981' : '#1f2b40'}`,
+                          borderRadius: '1rem',
+                          padding: '1.25rem 1.5rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '1rem',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                            <span style={{ background: '#10b981', color: '#000', fontSize: '0.75rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                              کارگاه محلی شهر شما ({aiUserCity})
+                            </span>
+                            <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>زرگری و گالری سلطانی (اعتبار ۹۸.۷٪)</span>
+                          </div>
+                          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>ساخت کامل با ریخته‌گری دقیق و تحویل حضوری در مغازه</h4>
+                          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                            مدت ساخت: ۴ روز کاری | گارانتی تعویض و ری‌گیری رسمی
                           </span>
                         </div>
-                        <h4 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#fff' }}>
-                          {prop.sellerName}
-                        </h4>
-                        <div style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                          گارانتی رسمی اصالت: {prop.warrantyMonths} ماه | صدور شناسنامه دیجیتال QR
-                        </div>
-                        <div style={{ background: '#090d16', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #1f293d', marginBottom: '1rem' }}>
-                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>قیمت تمام‌شده (طلا خام + اجرت + مالیات):</span>
-                          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fbbf24', marginTop: '0.25rem' }}>
-                            {prop.estimatedCostToman.toLocaleString('fa-IR')} تومان
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#fbbf24' }}>
+                            {calculateExactGoldPrice(aiEstimatedWeight, 13).toLocaleString('fa-IR')} تومان
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>اجرت ۱۳٪</span>
+                          <div style={{ marginTop: '0.5rem' }}>
+                            <button
+                              onClick={() => setSelectedWorkshopQuote('q1')}
+                              style={{
+                                padding: '0.5rem 1rem',
+                                borderRadius: '0.5rem',
+                                background: selectedWorkshopQuote === 'q1' ? '#10b981' : '#23314d',
+                                color: '#fff',
+                                fontWeight: 700,
+                                border: 'none',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {selectedWorkshopQuote === 'q1' ? '✓ انتخاب شد' : 'انتخاب این کارگاه'}
+                            </button>
                           </div>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => setSelectedProposal(prop)}
+                      {/* Quote 2: Specialized Hub (Tehran / Isfahan) */}
+                      <div
                         style={{
-                          width: '100%',
-                          padding: '0.6rem',
-                          borderRadius: '0.5rem',
-                          border: 'none',
-                          background: isSelected ? '#10b981' : '#23304b',
-                          color: '#fff',
-                          fontWeight: 700,
-                          cursor: 'pointer',
+                          background: selectedWorkshopQuote === 'q2' ? 'rgba(16, 185, 129, 0.1)' : '#121827',
+                          border: `2px solid ${selectedWorkshopQuote === 'q2' ? '#10b981' : '#1f2b40'}`,
+                          borderRadius: '1rem',
+                          padding: '1.25rem 1.5rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '1rem',
                         }}
                       >
-                        {isSelected ? '✓ انتخاب شده جهت صدور فاکتور' : 'انتخاب این طلاساز و ثبت سفارش'}
-                      </button>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                            <span style={{ background: '#38bdf8', color: '#000', fontSize: '0.75rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
+                              قطب تخصصی ریخته‌گری ۳D (اصفهان)
+                            </span>
+                            <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>استودیو جواهر درخشان (اعتبار ۹۷.۴٪)</span>
+                          </div>
+                          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>ساخت با دستگاه پرینتر رزینی سه‌بعدی و تراش میکرو</h4>
+                          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                            تحویل در نزدیک‌ترین طلافروشی معتمد شهر شما ({aiUserCity}) جهت وزن‌کشی حضوری
+                          </span>
+                        </div>
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#fbbf24' }}>
+                            {calculateExactGoldPrice(aiEstimatedWeight, 11).toLocaleString('fa-IR')} تومان
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>اجرت رقابتی ۱۱٪</span>
+                          <div style={{ marginTop: '0.5rem' }}>
+                            <button
+                              onClick={() => setSelectedWorkshopQuote('q2')}
+                              style={{
+                                padding: '0.5rem 1rem',
+                                borderRadius: '0.5rem',
+                                background: selectedWorkshopQuote === 'q2' ? '#10b981' : '#23314d',
+                                color: '#fff',
+                                fontWeight: 700,
+                                border: 'none',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {selectedWorkshopQuote === 'q2' ? '✓ انتخاب شد' : 'انتخاب این کارگاه'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
 
-              {selectedProposal && (
+                    {selectedWorkshopQuote && (
+                      <div style={{ marginTop: '1.5rem', background: '#0e231b', border: '1px solid #10b981', padding: '1.25rem', borderRadius: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ color: '#10b981', fontWeight: 800 }}>سفارش ساخت به کارگاه منتخب ابلاغ شد!</div>
+                          <div style={{ fontSize: '0.85rem', color: '#cbd5e1', marginTop: '0.2rem' }}>
+                            کد رزرو اختصاصی برای شما پیامک شد. بدون نیاز به پرداخت آنلاین کل مبلغ طلا؛ تسویه حساب نهایی روی کارتخوان طلافروشی در لحظه تحویل انجام می‌گیرد.
+                          </div>
+                        </div>
+                        <span style={{ background: '#10b981', color: '#000', padding: '0.5rem 1.25rem', fontWeight: 800, borderRadius: '0.5rem' }}>
+                          ثبت سفارش بدون ریسک ✓
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 3: VERIFIED SELLERS DIRECTORY                             */}
+        {/* ============================================================== */}
+        {activeTab === 'sellers' && (
+          <div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0 0 0.5rem 0' }}>
+                شبکه سراسری طلافروشان و سازندگان تاییدشده اتحادیه
+              </h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.95rem' }}>
+                تمام واحدهای صنفی حاضر در V-GOLD دارای پروانه کسب فعال، کد استاندارد ری‌گیری و امتیاز مانیتورینگ صنفی می‌باشند.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
+              {VERIFIED_SELLERS.map((s) => (
                 <div
+                  key={s.id}
                   style={{
-                    marginTop: '1.5rem',
-                    background: '#102a20',
-                    border: '1px solid #10b981',
-                    borderRadius: '0.75rem',
-                    padding: '1.25rem 1.75rem',
+                    background: '#121827',
+                    border: '1px solid #1f2b40',
+                    borderRadius: '1rem',
+                    padding: '1.5rem',
                     display: 'flex',
+                    flexDirection: 'column',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
                   }}
                 >
                   <div>
-                    <h4 style={{ margin: '0 0 0.25rem 0', color: '#10b981', fontSize: '1.1rem' }}>
-                      سفارش به {selectedProposal.sellerName} متصل شد
-                    </h4>
-                    <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
-                      مبلغ نهایی: {selectedProposal.estimatedCostToman.toLocaleString('fa-IR')} تومان | همراه با قفل قیمت طلا برای ۳ دقیقه جهت واریز امن
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '0.25rem 0.6rem', borderRadius: '0.4rem', fontSize: '0.75rem', fontWeight: 800 }}>
+                        ★ رتبه اعتبار: {s.trustScore} از ۱۰۰
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: '#38bdf8' }}>{s.city}</span>
+                    </div>
+
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: '#f8fafc' }}>
+                      {s.name}
+                    </h3>
+
+                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.75rem' }}>
+                      📍 {s.address}
+                    </div>
+
+                    <div style={{ background: '#090d16', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #1a2336', marginBottom: '1rem', fontSize: '0.8rem' }}>
+                      <div style={{ color: '#64748b' }}>شماره جواز صنفی: <strong style={{ color: '#cbd5e1' }}>{s.licenseNumber}</strong></div>
+                      <div style={{ color: '#64748b', marginTop: '0.2rem' }}>تلفن تماس: <strong style={{ color: '#cbd5e1' }}>{s.phone}</strong></div>
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>تخصص‌های کارگاه:</span>
+                      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
+                        {s.specialities.map((spec) => (
+                          <span key={spec} style={{ background: '#1e293b', color: '#94a3b8', padding: '0.15rem 0.5rem', borderRadius: '0.3rem', fontSize: '0.75rem' }}>
+                            {spec}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid #1c273e', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#cbd5e1' }}>
+                    <span>سفارشات موفق: <b>{s.completedOrders}</b></span>
+                    <span>سابقه: <b>{s.activityYears} سال</b></span>
+                    <span style={{ color: s.canTakeCustomOrders ? '#10b981' : '#f59e0b' }}>
+                      {s.canTakeCustomOrders ? 'پذیرش ساخت سفارشی ✓' : 'فقط فروش ویترین'}
                     </span>
                   </div>
-                  <button
-                    style={{
-                      background: '#10b981',
-                      color: '#000',
-                      padding: '0.6rem 1.5rem',
-                      fontWeight: 800,
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    انتقال به درگاه پرداخت و تسویه امن
-                  </button>
                 </div>
-              )}
-            </div>
-
-            {/* Verified Sellers Directory */}
-            <div>
-              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 1rem 0', color: '#f1f5f9' }}>
-                فهرست طلافروشان و سازندگان دارای پروانه کسب و رتبه مانیتورینگ
-              </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1rem' }}>
-                {VERIFIED_SELLERS.map((s) => (
-                  <div key={s.id} style={{ background: '#131b2e', border: '1px solid #23304b', borderRadius: '0.75rem', padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '0.8rem', color: '#fbbf24', fontWeight: 700 }}>{s.badge}</span>
-                      <span style={{ fontSize: '0.75rem', color: '#10b981' }}>تاییدیه اتحادیه ✓</span>
-                    </div>
-                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 0.35rem 0', color: '#fff' }}>{s.name}</h4>
-                    <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0 0 0.75rem 0' }}>{s.city}</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1f293d', paddingTop: '0.75rem', fontSize: '0.8rem', color: '#cbd5e1' }}>
-                      <span>سفارش موفق: <b>{s.completedOrders}</b></span>
-                      <span>سابقه: <b>{s.activityYears} سال</b></span>
-                      <span>امتیاز: <b>{s.trustScore}٪</b></span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* 2. SELLER & GOLDSMITH DASHBOARD (Seller OS) */}
-        {role === 'seller' && (
+        {/* ============================================================== */}
+        {/* TAB 4: SELLER OS (JEWELER MANAGEMENT DASHBOARD)               */}
+        {/* ============================================================== */}
+        {activeTab === 'seller-dashboard' && (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
-              <div style={{ background: '#131b2e', border: '1px solid #23304b', padding: '1.25rem', borderRadius: '0.75rem' }}>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>موجودی طلای شمش و خام:</span>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fbbf24', marginTop: '0.25rem' }}>۴,۲۵۰ گرم</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0 0 0.5rem 0' }}>
+                  سیستم‌عامل فروشندگان و سازندگان طلا (Seller OS)
+                </h2>
+                <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>
+                  مدیریت موجودی ویترین، رزروهای مشتریان و استعلام‌های سفارش ساخت هوش مصنوعی
+                </p>
               </div>
-              <div style={{ background: '#131b2e', border: '1px solid #23304b', padding: '1.25rem', borderRadius: '0.75rem' }}>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>سفارشات در حال ساخت کارگاه:</span>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#38bdf8', marginTop: '0.25rem' }}>۱۴ سفارش</div>
+              <button
+                style={{
+                  background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+                  color: '#000',
+                  padding: '0.6rem 1.25rem',
+                  borderRadius: '0.5rem',
+                  fontWeight: 800,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                + افزودن طلای جدید به ویترین فروشگاه
+              </button>
+            </div>
+
+            {/* Quick Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+              <div style={{ background: '#121827', border: '1px solid #1f2b40', padding: '1.25rem', borderRadius: '0.75rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>موجودی طلای بارگذاری‌شده در ویترین:</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fbbf24', marginTop: '0.25rem' }}>۳,۴۸۰ گرم</div>
               </div>
-              <div style={{ background: '#131b2e', border: '1px solid #23304b', padding: '1.25rem', borderRadius: '0.75rem' }}>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>استعلام‌های جدید هوش مصنوعی:</span>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', marginTop: '0.25rem' }}>۸ درخواست</div>
+              <div style={{ background: '#121827', border: '1px solid #1f2b40', padding: '1.25rem', borderRadius: '0.75rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>رزروهای حضوری امروز مشتریان:</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#10b981', marginTop: '0.25rem' }}>۷ فاکتور</div>
               </div>
-              <div style={{ background: '#131b2e', border: '1px solid #23304b', padding: '1.25rem', borderRadius: '0.75rem' }}>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>امتیاز اعتماد کارگاه (Guild):</span>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#a855f7', marginTop: '0.25rem' }}>۹۸.۴٪ (عالی)</div>
+              <div style={{ background: '#121827', border: '1px solid #1f2b40', padding: '1.25rem', borderRadius: '0.75rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>استعلام‌های ساخت باز (RFQ):</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#38bdf8', marginTop: '0.25rem' }}>۱۲ استعلام</div>
+              </div>
+              <div style={{ background: '#121827', border: '1px solid #1f2b40', padding: '1.25rem', borderRadius: '0.75rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>شناسنامه‌های دیجیتال QR صادرشده:</span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a855f7', marginTop: '0.25rem' }}>۴۵۰ شناسنامه</div>
               </div>
             </div>
 
-            <div style={{ background: '#131b2e', border: '1px solid #23304b', borderRadius: '1rem', padding: '1.5rem', marginBottom: '2rem' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1rem 0' }}>
-                مدیریت استعلام‌های ساخت جواهر ورودی (RFQ Inbox)
+            {/* Recent In-store Reservations */}
+            <div style={{ background: '#121827', border: '1px solid #1f2b40', borderRadius: '1rem', padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 1rem 0', color: '#f8fafc' }}>
+                فهرست مشتریان در انتظار مراجعه به مغازه (با کد رزرو)
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div style={{ background: '#090d16', border: '1px solid #1f293d', borderRadius: '0.5rem', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ background: '#090d16', border: '1px solid #1c273e', borderRadius: '0.5rem', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.9rem' }}>#RFQ-8902:</span>
-                    <span style={{ marginRight: '0.5rem', color: '#fff' }}>نیم‌ست گل رز با طلای رزگلد ۱۸ عیار و برلیان</span>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>وزن تخمینی: ۱۲.۴ گرم | خریدار: احراز هویت شده (تهران)</div>
+                    <span style={{ color: '#fbbf24', fontWeight: 800, fontSize: '0.9rem' }}>کد رزرو: VG-849201</span>
+                    <div style={{ color: '#fff', fontSize: '0.95rem', marginTop: '0.2rem' }}>دستبند النگویی طرح کارتیر لاو (۱۴.۲ گرم)</div>
+                    <span style={{ color: '#64748b', fontSize: '0.8rem' }}>مشتری: علیرضا محمدی | مهلت مراجعه: تا فردا ساعت ۲۰:۰۰</span>
                   </div>
-                  <button style={{ background: '#fbbf24', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.4rem', fontWeight: 700, cursor: 'pointer' }}>
-                    ارسال پیشنهاد قیمت
+                  <button style={{ background: '#10b981', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.4rem', fontWeight: 800, cursor: 'pointer' }}>
+                    تایید تحویل حضوری و صدور شناسنامه QR
                   </button>
                 </div>
-                <div style={{ background: '#090d16', border: '1px solid #1f293d', borderRadius: '0.5rem', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+
+                <div style={{ background: '#090d16', border: '1px solid #1c273e', borderRadius: '0.5rem', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.9rem' }}>#RFQ-8901:</span>
-                    <span style={{ marginRight: '0.5rem', color: '#fff' }}>دستبند مردانه کارتیر با طلای زرد و چرم طبیعی</span>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>وزن تخمینی: ۱۸.۲ گرم | خریدار: احراز هویت شده (اصفهان)</div>
+                    <span style={{ color: '#fbbf24', fontWeight: 800, fontSize: '0.9rem' }}>کد رزرو: VG-773190</span>
+                    <div style={{ color: '#fff', fontSize: '0.95rem', marginTop: '0.2rem' }}>انگشتر سولیتر برلیان پاک شناسنامه‌دار (۴.۸ گرم)</div>
+                    <span style={{ color: '#64748b', fontSize: '0.8rem' }}>مشتری: سارا کاظمی | مهلت مراجعه: تا پایان امروز</span>
                   </div>
-                  <button style={{ background: '#23304b', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.4rem', fontWeight: 700, cursor: 'pointer' }}>
-                    پیشنهاد ارسال شده
+                  <button style={{ background: '#10b981', color: '#000', border: 'none', padding: '0.5rem 1rem', borderRadius: '0.4rem', fontWeight: 800, cursor: 'pointer' }}>
+                    تایید تحویل حضوری و صدور شناسنامه QR
                   </button>
                 </div>
               </div>
@@ -486,77 +982,154 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 3. ADMIN & GOVERNANCE DASHBOARD */}
-        {role === 'admin' && (
-          <div style={{ background: '#131b2e', border: '1px solid #23304b', borderRadius: '1rem', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: '#f1f5f9' }}>
-              میز نظارت عالیه، احراز هویت کارگاه‌ها و پشتیبانی کل پلتفرم
-            </h3>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-              پایش بلادرنگ عیارسنجی، بازرسی‌های صنفی، شکایات مشتریان و انطباق با قوانین پولشویی طلا
+        {/* ============================================================== */}
+        {/* TAB 5: ADMIN & UNION GOVERNANCE (RISK-FREE COMPLIANCE)         */}
+        {/* ============================================================== */}
+        {activeTab === 'admin-governance' && (
+          <div style={{ background: '#121827', border: '1px solid #1f2b40', borderRadius: '1.25rem', padding: '2rem' }}>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: '#f8fafc' }}>
+              میز نظارت عالیه، احراز هویت طلافروشان و تطابق با ضوابط قانونی
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: '2rem' }}>
+              معماری تجاری بدون تصدی‌گری مالی (Non-Custodial Architecture) جهت سلب هرگونه مسئولیت سرقت، هک کیف پول و مالیات مستقیم
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-              <div style={{ background: '#090d16', padding: '1.25rem', borderRadius: '0.75rem', border: '1px solid #1f293d' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', color: '#38bdf8' }}>پایش عیارسنجی و ری‌گیری</h4>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
-                  تمام کد رهگیری‌های عیار ۷۵۰ به سامانه‌های استاندارد ملی متصل بوده و بدون مغایرت تایید شده‌اند.
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+              <div style={{ background: '#090d16', border: '1px solid #1c273e', padding: '1.5rem', borderRadius: '0.75rem' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#38bdf8', fontSize: '1.1rem' }}>عدم تصدی وجوه (Zero Financial Liability)</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.7', margin: 0 }}>
+                  پلتفرم V-GOLD هیچ‌گونه درگاه دریافت مستقیم میلیاردی یا کیف پول ذخیره طلا ندارد. کلیه تسویه‌ها به صورت حضوری روی کارتخوان‌های رسمی ثبت‌شده در سازمان امور مالیاتی متعلق به واحد صنفی انجام می‌گیرد.
                 </p>
               </div>
 
-              <div style={{ background: '#090d16', padding: '1.25rem', borderRadius: '0.75rem', border: '1px solid #1f293d' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', color: '#10b981' }}>تراکنش‌های امانی (Escrow)</h4>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
-                  وجوه خریدار در حساب امانی تا زمان تحویل فیزیکی طلا، وزن‌کشی دقیق و تایید خریدار مسدود می‌ماند.
+              <div style={{ background: '#090d16', border: '1px solid #1c273e', padding: '1.5rem', borderRadius: '0.75rem' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#10b981', fontSize: '1.1rem' }}>کدهای استاندارد عیار ۷۵۰ (T-Mark)</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.7', margin: 0 }}>
+                  فروشندگان بدون ارائه شماره ثبت ری‌گیری و تاییدیه سالانه اتحادیه طلا و جواهر، اجازه نمایش در ویترین را نخواهند داشت.
                 </p>
               </div>
 
-              <div style={{ background: '#090d16', padding: '1.25rem', borderRadius: '0.75rem', border: '1px solid #1f293d' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', color: '#a855f7' }}>پشتیبانی حل اختلاف ۲۴/۷</h4>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>
-                  داوری آنلاین مابین طلاساز و خریدار با استناد به مدل ۳D و شناسنامه تغییرناپذیر دیجیتال محصول.
+              <div style={{ background: '#090d16', border: '1px solid #1c273e', padding: '1.5rem', borderRadius: '0.75rem' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#a855f7', fontSize: '1.1rem' }}>شناسنامه دیجیتال رمزنگاری‌شده (Digital Passport)</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.7', margin: 0 }}>
+                  هر طلای تحویل‌شده دارای یک برچسب QR یکتا با امضای دیجیتال است که وزن دقیق، درصد اجرت، نام کارگاه و تاریخ صدور را بدون امکان جعل ثبت می‌کند.
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* 4. ALL 26 STAGES OVERVIEW */}
-        {role === 'all-stages' && (
-          <div style={{ background: '#131b2e', border: '1px solid #23304b', borderRadius: '1rem', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 1rem 0' }}>
-              معماری عمیق ۲۶ مرحله‌ای V-GOLD (تست‌شده و کامل)
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-              <div style={{ background: '#090d16', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #1f293d' }}>
-                <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.8rem' }}>Stage 1 - 5</span>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>معماری پیازی، هسته دامنه، Drizzle ORM و چندمستأجری RLS</p>
-              </div>
-              <div style={{ background: '#090d16', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #1f293d' }}>
-                <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.8rem' }}>Stage 6 - 10</span>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>کاتالوگ سنگ و طلا، انبارداری شمش، سیستم عامل فروشنده (Seller OS)</p>
-              </div>
-              <div style={{ background: '#090d16', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #1f293d' }}>
-                <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.8rem' }}>Stage 11 - 15</span>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>مارکت‌پلیس، طراح چت AI، کانسپت ژنراتور و جستجوی بصری برداری</p>
-              </div>
-              <div style={{ background: '#090d16', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #1f293d' }}>
-                <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.8rem' }}>Stage 16 - 20</span>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>استودیو ۳D، پرو مجازی (Try-on)، استعلام RFQ و تجارت قفل قیمت</p>
-              </div>
-              <div style={{ background: '#090d16', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #1f293d' }}>
-                <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: '0.8rem' }}>Stage 21 - 26</span>
-                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.25rem 0 0 0' }}>استودیو محتوا، اعتماد و مجوزها، پروداکشن، Style DNA و پاسپورت دیجیتال</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
-        <footer style={{ marginTop: '3rem', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
-          پلتفرم مهندسی و جامع طلا و جواهر V-GOLD — تمام حقوق محفوظ است © ۲۰۲۶
-        </footer>
       </div>
+
+      {/* RESERVATION SUCCESS MODAL */}
+      {reservationModalItem && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem',
+          }}
+        >
+          <div
+            style={{
+              background: '#131a29',
+              border: '1px solid #23314d',
+              borderRadius: '1.25rem',
+              maxWidth: '540px',
+              width: '100%',
+              padding: '2rem',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)',
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div
+                style={{
+                  width: '4rem',
+                  height: '4rem',
+                  borderRadius: '50%',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: '#10b981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1rem auto',
+                  fontSize: '2rem',
+                }}
+              >
+                ✓
+              </div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 900, margin: '0 0 0.5rem 0', color: '#f8fafc' }}>
+                کد رزرو خرید حضوری در طلافروشی صادر شد
+              </h3>
+              <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: 0 }}>
+                این طلا به مدت ۲۴ ساعت برای شما در گالری رزرو شد تا شخصاً آن را بررسی و وزن‌کشی کنید.
+              </p>
+            </div>
+
+            <div style={{ background: '#090d16', border: '1px dashed #f59e0b', borderRadius: '0.75rem', padding: '1.25rem', textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>کد رهگیری اختصاصی رزرو شما:</span>
+              <div style={{ fontSize: '2rem', fontWeight: 900, color: '#fbbf24', letterSpacing: '2px', marginTop: '0.25rem' }}>
+                {reservedSuccessCode}
+              </div>
+              <span style={{ fontSize: '0.75rem', color: '#10b981' }}>
+                این کد را به همراه کارت شناسایی به طلافروش نشان دهید
+              </span>
+            </div>
+
+            <div style={{ fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.8', marginBottom: '1.75rem', background: '#0e1422', padding: '1rem', borderRadius: '0.5rem' }}>
+              <div>• <strong>کالا:</strong> {reservationModalItem.title}</div>
+              <div>• <strong>فروشگاه:</strong> {reservationModalItem.sellerName} ({reservationModalItem.sellerCity})</div>
+              <div>• <strong>وزن:</strong> {reservationModalItem.weightG} گرم طلا ۱۸ عیار</div>
+              <div>• <strong>نحوه تسویه:</strong> پرداخت ۱۰۰٪ امن روی کارتخوان مغازه در لحظه تحویل فیزیکی کالا</div>
+            </div>
+
+            <button
+              onClick={() => setReservationModalItem(null)}
+              style={{
+                width: '100%',
+                padding: '0.85rem',
+                borderRadius: '0.6rem',
+                background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+                color: '#000',
+                fontWeight: 800,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+              }}
+            >
+              متوجه شدم و بستن پنجره
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER */}
+      <footer
+        style={{
+          borderTop: '1px solid #1a2336',
+          marginTop: '4rem',
+          padding: '2.5rem 1.5rem',
+          background: '#0a0d16',
+          textAlign: 'center',
+          color: '#64748b',
+          fontSize: '0.85rem',
+        }}
+      >
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+          <div>
+            <strong>پلتفرم تجاری طلا و جواهر V-GOLD</strong> — سامانه رسمی معرفی و استعلام ساخت طلا
+          </div>
+          <div>
+            کلیه معاملات به صورت حضوری و در چارچوب ضوابط اتحادیه طلا و جواهر کشور انجام می‌گیرد.
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
